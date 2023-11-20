@@ -57,7 +57,24 @@ const char* std_allocator_static::allocator_name() noexcept {
     return g_stdAlloc.allocator_name();
 }
 
-void initCore() {
+namespace {
+
+void printUsage() {
+    fmt::print(fmt::emphasis::bold, "Usage \n");
+    fmt::print("----------------------------------------------\n");
+    fmt::print("TODO: Describe this program briefly.\n");
+    fmt::print("----------------------------------------------\n");
+    fmt::print("option column               description column\n");
+    fmt::print("----------------------------------------------\n");
+    fmt::print("--help, -h                  print this message\n");
+    fmt::print("--method, -m                method of generating random numbers. 0 means uniform and 1 means cluster\n");
+    fmt::print("--random_seed, -r           seed for the random pairs\n");
+    fmt::print("--pair_count, -p            number of pairs to generate\n");
+}
+
+};
+
+core_context initCore(i32 argc, const char** argv) {
     core::set_global_assert_handler([](const char* failedExpr, const char* file, i32 line, const char* errMsg) {
         constexpr u32 stackFramesToSkip = 3;
         std::string trace = core::stacktrace(200, stackFramesToSkip);
@@ -67,4 +84,38 @@ void initCore() {
         fmt::print(fmt::emphasis::bold, "[TRACE]:\n{}\n", trace);
         throw std::runtime_error("Assertion failed!");
     });
+
+    core_context ret = {};
+
+    core::flag_parser parser;
+    parser.flag(&ret.cmdArgs.method, core::sv("method"), true, [](void* val) -> bool {
+        i32* method = reinterpret_cast<i32*>(val);
+        if (method != nullptr && (*method == 0 || *method == 1)) return true;
+        fmt::print(stderr, fg(fmt::color::red) | fmt::emphasis::bold, "[ERROR]: Invalid argument for method.\n");
+        return false;
+    });
+    parser.flag(&ret.cmdArgs.rndSeed, core::sv("rndSeed"), true);
+    parser.flag(&ret.cmdArgs.pairCount, core::sv("pairCount"), true);
+    parser.option(&ret.cmdArgs.printHelp, core::sv("help"), [] (bool val) {
+        if (val) {
+            printUsage();
+            core::os_exit(EXIT_SUCCESS);
+        }
+    });
+
+    parser.alias(core::sv("method"), core::sv("m"));
+    parser.alias(core::sv("rndSeed"), core::sv("r"));
+    parser.alias(core::sv("pairCount"), core::sv("p"));
+    parser.alias(core::sv("help"), core::sv("h"));
+
+    {
+        auto res = parser.parse(argc, argv);
+        if (res.has_err()) {
+            fmt::print(stderr, fg(fmt::color::red) | fmt::emphasis::bold, "[ERROR]: Command line arguments parsing failed.\n");
+            printUsage();
+            core::os_exit(EXIT_FAILURE);
+        }
+    }
+
+    return ret;
 }

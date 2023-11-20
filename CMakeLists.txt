@@ -7,12 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(src_files
-    main.cpp
+    src/init_core.cpp
 )
 
 # Create the executable
 
-add_executable(${PROJECT_NAME} ${src_files})
+add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp ${src_files})
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include

@@ -33,6 +33,19 @@ struct std_allocator_static {
 #include <fmt/core.h>
 #include <fmt/color.h>
 
-void initCore();
-
 using sb = core::str_builder<>;
+
+struct command_line_args {
+    i32 method;
+    i32 rndSeed;
+    u32 pairCount;
+    bool printHelp;
+};
+
+struct core_context {
+    command_line_args cmdArgs;
+};
+
+extern core_context g_coreContext;
+
+core_context initCore(i32 argc, const char** argv);
