@@ -188,13 +188,16 @@ bool parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdAr
 
     core::CmdFlagParser flagParser;
 
-    // Set flags:
-    flagParser.setFlagString(&cmdArgs.outFileSb, core::sv("o"), false, nullptr);
-
     Expect(
         flagParser.parse(argc, argv),
         "Failed to parse command line flags!"
     );
+
+    // Set flags:
+    flagParser.setFlagString(&cmdArgs.outFileSb, core::sv("o"), false, nullptr);
+
+    // Match flags:
+    Expect(flagParser.matchFlags(), "Failed to match command line flags!");
 
     // Handle help option:
     {
@@ -306,6 +309,7 @@ i32 main(i32 argc, const char** argv) {
     if (cmdArgs.outFileSb.empty()) {
         cmdArgs.outFileSb = core::sv("pairs.json");
     }
+    printf("Output file: %s\n", cmdArgs.outFileSb.view().data());
 
     serializePairs(pairs, cmdArgs.pairCount, cmdArgs.outFileSb.view().data());
 
