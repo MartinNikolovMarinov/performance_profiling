@@ -8,9 +8,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(src_files
     src/init_core.cpp
+    src/haversine.cpp
 )
 
-# Create the executable
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/core)
+
+# Create the generator executable:
 
 add_executable(haversine_generator haversine_generator.cpp ${src_files})
 
@@ -20,11 +23,16 @@ target_include_directories(haversine_generator
 
 target_compile_options(haversine_generator PRIVATE -Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unused-function)
 
-# Core library:
 target_link_libraries(haversine_generator PRIVATE core)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/core)
 
-# Fmt library:
-target_link_libraries(haversine_generator PRIVATE fmt)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/fmt)
-target_include_directories(fmt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/fmt/include)
+# Create the parser executable:
+
+add_executable(haversine_parser haversine_parser.cpp ${src_files})
+
+target_include_directories(haversine_parser
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_compile_options(haversine_parser PRIVATE -Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unused-function)
+
+target_link_libraries(haversine_parser PRIVATE core)
