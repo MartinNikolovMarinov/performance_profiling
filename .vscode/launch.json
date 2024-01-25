@@ -8,7 +8,7 @@
             "name": "Debug Test with GCC",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/haversine_generator",
+            "program": "${workspaceFolder}/build/haversine_parser",
             "args": ["cluster", "1234", "500", "-o", "test.json"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

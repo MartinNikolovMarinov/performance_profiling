@@ -21,7 +21,7 @@ target_include_directories(haversine_generator
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_compile_options(haversine_generator PRIVATE -Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unused-function)
+target_compile_options(haversine_generator PRIVATE -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function)
 
 target_link_libraries(haversine_generator PRIVATE core)
 
@@ -33,6 +33,6 @@ target_include_directories(haversine_parser
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_compile_options(haversine_parser PRIVATE -Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unused-function)
+target_compile_options(haversine_parser PRIVATE -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function)
 
 target_link_libraries(haversine_parser PRIVATE core)
