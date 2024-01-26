@@ -1,5 +1,6 @@
 #include <init_core.h>
 #include <haversine.h>
+#include <json_serializer.h>
 
 struct CommandLineArguments {
     f64 answer;
@@ -54,179 +55,72 @@ bool parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdAr
     return true;
 }
 
-struct JSONSerializer {
-    void pushObject() {
-        json.append('{');
-    }
-
-    void popObject(bool isLast = false) {
-        json.append('}');
-        if (!isLast) json.append(',');
-    }
-
-    void pushArray() {
-        json.append('[');
-    }
-
-    void popArray(bool isLast = false) {
-        json.append(']');
-        if (!isLast) json.append(',');
-    }
-
-    void pushKey(core::StrView key) {
-        json.append('"');
-        json.append(key);
-        json.append('"');
-        json.append(':');
-    }
-
-    template <typename T>
-    void pushValue(const T& value, bool isLast = false) {
-        toJSON(*this, value);
-        if (!isLast) json.append(',');
-    }
-
-    core::StrBuilder<> json;
-};
-
-struct JSONDeserializer {
-    void resetReadIdx() {
-        readIdx = 0;
-    }
-
-    void reset(const char* x, addr_size len) {
-        json = core::sv(x, len);
-        resetReadIdx();
-    }
-
-    bool readObjectBegin() {
-        if (json[readIdx] != '{') {
-            return false;
-        }
-
-        ++readIdx;
-        return true;
-    }
-
-    bool readObjectEnd() {
-        if (json[readIdx] != '}') {
-            return false;
-        }
-
-        ++readIdx;
-        return true;
-    }
-
-    bool readArrayBegin() {
-        if (json[readIdx] != '[') {
-            return false;
-        }
-
-        ++readIdx;
-        return true;
-    }
-
-    bool readArrayEnd() {
-        if (json[readIdx] != ']') {
-            return false;
-        }
-
-        ++readIdx;
-        return true;
-    }
-
-    bool readKey(core::StrView& key) {
-        if (json[readIdx] != '"') {
-            return false;
-        }
-
-        ++readIdx;
-        addr_size keyBegin = readIdx;
-
-        while (json[readIdx] != '"') {
-            ++readIdx;
-        }
-
-        key = core::sv(json.view().data() + keyBegin, readIdx - keyBegin);
-        ++readIdx;
-        return true;
-    }
-
-    template <typename T>
-    bool readValue(T& value) {
-        if (!fromJSON(*this, value)) {
-            return false;
-        }
-
-        if (json[readIdx] != ',') {
-            return false;
-        }
-
-        ++readIdx;
-        return true;
-    }
-
-    core::StrBuilder<> json;
-    addr_size readIdx;
-};
-
-void toJSON(JSONSerializer& s, f64 value) {
-    char buf[64];
-    i32 n = snprintf(buf, 64, "%.16f", value);
-    s.json.append(buf, n);
-}
-
-void toJSON(JSONSerializer& s, i32 value) {
-    char buf[core::maxDigitsBase10<i32>() + 1] = {};
-    i32 n = snprintf(buf, core::maxDigitsBase10<i32>(), "%d", value);
-    s.json.append(buf, n);
-}
-
-void toJSON(JSONSerializer& s, u32 value) {
-    char buf[core::maxDigitsBase10<u32>() + 1] = {};
-    i32 n = snprintf(buf, core::maxDigitsBase10<u32>(), "%u", value);
-    s.json.append(buf, n);
-}
-
-void toJSON(JSONSerializer& s, bool value) {
-    if (value) {
-        s.json.append("true");
-    }
-    else {
-        s.json.append("false");
-    }
-}
-
-void toJSON(JSONSerializer& s, core::StrView value) {
-    s.json.append('"');
-    s.json.append(value);
-    s.json.append('"');
-}
-
 i32 main(i32 argc, const char** argv) {
     if (!initCore(argc, argv)) {
         printf("%s\n", "Failed to initialize core!");
         return -1;
     }
 
-    JSONSerializer ser;
-    ser.pushObject();
-        ser.pushKey(core::sv("hello"));
-        ser.pushValue(1);
-        ser.pushObject();
-            ser.pushKey(core::sv("world"));
-            ser.pushValue(2.0f);
-            ser.pushKey(core::sv("foo"));
-            ser.pushValue(core::sv("bar"), true);
-        ser.popObject();
-        ser.pushKey(core::sv("bar"));
-        ser.pushValue(true, true);
-    ser.popObject(true);
+    auto serDeserFn = [](auto& sd,
+                    core::StrView& key1, i32& v1,
+                    core::StrView& key2, f64& v2,
+                    core::StrView& key3, bool& v3,
+                    core::StrView& arrKey, i32* arr, addr_size arrLen) {
+        sd.obj();
+            sd.key(key1);
+            sd.val(v1);
+            sd.obj();
+                sd.key(key2);
+                sd.val(v2);
+                sd.key(key3);
+                sd.val(v3, true);
+            sd.objEnd();
+            sd.key(arrKey);
+            sd.arr();
+                for (addr_size i = 0; i < arrLen; ++i) {
+                    sd.val(arr[i], i == arrLen - 1);
+                }
+            sd.arrEnd(true);
+        sd.objEnd(true);
+    };
 
+    core::JSONSerializer ser;
+
+    {
+        core::StrView key1 = core::sv("key1");
+        core::StrView key2 = core::sv("key2 with spaces");
+        core::StrView key3 = core::sv("key3");
+        core::StrView arrKey = core::sv("arrKey");
+        i32 v1 = 123;
+        f64 v2 = 123.456;
+        bool v3 = true;
+        i32 arr[] = { 5, 10, 20 };
+
+        serDeserFn(ser, key1, v1, key2, v2, key3, v3, arrKey, arr, 3);
+    }
+
+    printf("%s\n", "Serialized JSON:");
     printf("%s\n", ser.json.view().data());
+    printf("\n");
 
-    // JSONDeserializer deser;
-    // deser.json = core::move(ser.json);
+    core::JSONDeserializer deser;
+    deser.json = core::move(ser.json);
+
+    printf("%s\n", "Deserialized JSON:");
+    {
+        core::StrView key1, key2, key3, arrKey;
+        i32 v1;
+        f64 v2;
+        bool v3;
+        i32 arr[3];
+
+        serDeserFn(deser, key1, v1, key2, v2, key3, v3, arrKey, arr, 3);
+
+        printf("\"%.*s\" : %d\n", i32(key1.len()), key1.data(), v1);
+        printf("\"%.*s\" : %.16f\n", i32(key2.len()), key2.data(), v2);
+        printf("\"%.*s\" : %s\n", i32(key3.len()), key3.data(), v3 ? "true" : "false");
+        printf("\"%.*s\" : [%d, %d, %d]\n", i32(arrKey.len()), arrKey.data(), arr[0], arr[1], arr[2]);
+    }
 
     // CommandLineArguments cmdArgs;
     // if (!parserCmdArguments(argc, argv, cmdArgs)) {

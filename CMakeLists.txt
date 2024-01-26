@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(src_files
     src/init_core.cpp
     src/haversine.cpp
+    src/json_serializer.cpp
 )
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/core)
