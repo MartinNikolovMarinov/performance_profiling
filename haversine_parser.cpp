@@ -84,27 +84,35 @@ i32 main(i32 argc, const char** argv) {
         sd.objEnd(true);
     };
 
-    core::JSONSerializer ser;
+    // core::JSONSerializer ser;
 
-    {
-        core::StrView key1 = core::sv("key1");
-        core::StrView key2 = core::sv("key2 with spaces");
-        core::StrView key3 = core::sv("key3");
-        core::StrView arrKey = core::sv("arrKey");
-        i32 v1 = 123;
-        f64 v2 = 123.456;
-        bool v3 = true;
-        i32 arr[] = { 5, 10, 20 };
+    // {
+    //     core::StrView key1 = core::sv("key1");
+    //     core::StrView key2 = core::sv("key2 with spaces");
+    //     core::StrView key3 = core::sv("key3");
+    //     core::StrView arrKey = core::sv("arrKey");
+    //     i32 v1 = 123;
+    //     f64 v2 = 123.456;
+    //     bool v3 = true;
+    //     i32 arr[] = { 5, 10, 20 };
 
-        serDeserFn(ser, key1, v1, key2, v2, key3, v3, arrKey, arr, 3);
+    //     serDeserFn(ser, key1, v1, key2, v2, key3, v3, arrKey, arr, 3);
+    // }
+
+    // printf("%s\n", "Serialized JSON:");
+    // printf("%s\n", ser.json.view().data());
+    // printf("\n");
+
+    CommandLineArguments cmdArgs;
+    if (!parserCmdArguments(argc, argv, cmdArgs)) {
+        return -2;
     }
 
-    printf("%s\n", "Serialized JSON:");
-    printf("%s\n", ser.json.view().data());
-    printf("\n");
+    printf("Input file: %s\n", cmdArgs.inFileSb.view().data());
+    printf("Expected answer: %.16f\n", cmdArgs.answer);
 
     core::JSONDeserializer deser;
-    deser.json = core::move(ser.json);
+    deser.json = cmdArgs.inFileSb.view();
 
     printf("%s\n", "Deserialized JSON:");
     {
@@ -121,14 +129,6 @@ i32 main(i32 argc, const char** argv) {
         printf("\"%.*s\" : %s\n", i32(key3.len()), key3.data(), v3 ? "true" : "false");
         printf("\"%.*s\" : [%d, %d, %d]\n", i32(arrKey.len()), arrKey.data(), arr[0], arr[1], arr[2]);
     }
-
-    // CommandLineArguments cmdArgs;
-    // if (!parserCmdArguments(argc, argv, cmdArgs)) {
-    //     return -2;
-    // }
-
-    // printf("Input file: %s\n", cmdArgs.inFileSb.view().data());
-    // printf("Expected answer: %.16f\n", cmdArgs.answer);
 
     return 0;
 }
