@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "chrono": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "span": "cpp",
+        "*.tcc": "cpp",
+        "unordered_set": "cpp",
+        "iterator": "cpp",
+        "algorithm": "cpp",
+        "memory": "cpp",
+        "numeric": "cpp"
+    }
+}
