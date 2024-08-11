@@ -26,6 +26,11 @@ void asserHandler(const char* failedExpr, const char* file, i32 line, const char
     throw std::runtime_error("Assertion failed!");
 };
 
-void coreInit() {
+bool coreInit() {
     core::initProgramCtx(asserHandler, nullptr);
+
+    if (!core::initLogger({})) return false;
+    core::setLogLevel(core::LogLevel::L_INFO);
+
+    return true;
 }

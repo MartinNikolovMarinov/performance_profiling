@@ -3,4 +3,4 @@
 
 using namespace coretypes;
 
-void coreInit();
+bool coreInit();

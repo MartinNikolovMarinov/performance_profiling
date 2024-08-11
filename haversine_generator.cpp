@@ -1,11 +1,17 @@
 #include <core_init.h>
 
+enum struct RandomPairGenerationMethod : u8 {
+    None,
+    Uniform,
+    Clustered
+};
+
 struct Pair {
     f64 x0, y0, x1, y1;
 };
 
 void generateRandomUniformPairs(Pair* pairs, addr_size pCount) {
-    // printf("Generating %zu random uniform pairs\n", pCount);
+    logInfo("Generating %zu random uniform pairs", pCount);
 
     for (addr_size i = 0; i < pCount; i++) {
         Pair& pair = pairs[i];
@@ -17,188 +23,197 @@ void generateRandomUniformPairs(Pair* pairs, addr_size pCount) {
     }
 }
 
-// void generateRandomClusteredPairs(Pair* pairs, addr_size pCount) {
-//     // printf("Generating %zu random clustered pairs\n", pCount);
+void generateRandomClusteredPairs(Pair* pairs, addr_size pCount) {
+    logInfo("Generating %zu random clustered pairs", pCount);
 
-//     constexpr u32 CLUSTER_COUNT = 64;
-//     struct Cluster { f64 x, y, r; };
-//     Cluster clusters[CLUSTER_COUNT];
+    constexpr u32 CLUSTER_COUNT = 64;
+    struct Cluster { f64 x, y, r; };
+    Cluster clusters[CLUSTER_COUNT];
 
-//     auto handleOverflows = [](f64& x, f64& y) {
-//         if (x < -180.0) x += 360.0;
-//         if (x > 180.0) x -= 360.0;
-//         if (y < -90.0) y += 180.0;
-//         if (y > 90.0) y -= 180.0;
-//     };
+    auto handleOverflows = [](f64& x, f64& y) {
+        if (x < -180.0) x += 360.0;
+        if (x > 180.0) x -= 360.0;
+        if (y < -90.0) y += 180.0;
+        if (y > 90.0) y -= 180.0;
+    };
 
-//     for (u32 i = 0; i < CLUSTER_COUNT; i++) {
-//         clusters[i].x = core::rndF64(-180.0, 180.0);
-//         clusters[i].y = core::rndF64(-90.0, 90.0);
-//         clusters[i].r = core::rndF64(10.0, 50.0);
+    for (u32 i = 0; i < CLUSTER_COUNT; i++) {
+        clusters[i].x = core::rndF64(-180.0, 180.0);
+        clusters[i].y = core::rndF64(-90.0, 90.0);
+        clusters[i].r = core::rndF64(10.0, 50.0);
 
-//         // printf("Cluster %u: (%.16f, %.16f) r=%.16f\n", i, clusters[i].x, clusters[i].y, clusters[i].r);
-//     }
+        logTrace("Cluster %u: (%.16f, %.16f) r=%.16f", i, clusters[i].x, clusters[i].y, clusters[i].r);
+    }
 
-//     for (addr_size i = 0; i < pCount; i++) {
-//         Pair& pair = pairs[i];
-//         Cluster& cluster = clusters[i % CLUSTER_COUNT];
+    for (addr_size i = 0; i < pCount; i++) {
+        Pair& pair = pairs[i];
+        Cluster& cluster = clusters[i % CLUSTER_COUNT];
 
-//         pair.x0 = core::rndF64(cluster.x - cluster.r, cluster.x + cluster.r);
-//         pair.y0 = core::rndF64(cluster.y - cluster.r, cluster.y + cluster.r);
-//         pair.x1 = core::rndF64(cluster.x - cluster.r, cluster.x + cluster.r);
-//         pair.y1 = core::rndF64(cluster.y - cluster.r, cluster.y + cluster.r);
+        pair.x0 = core::rndF64(cluster.x - cluster.r, cluster.x + cluster.r);
+        pair.y0 = core::rndF64(cluster.y - cluster.r, cluster.y + cluster.r);
+        pair.x1 = core::rndF64(cluster.x - cluster.r, cluster.x + cluster.r);
+        pair.y1 = core::rndF64(cluster.y - cluster.r, cluster.y + cluster.r);
 
-//         handleOverflows(pair.x0, pair.y0);
-//         handleOverflows(pair.x1, pair.y1);
-//     }
-// }
+        handleOverflows(pair.x0, pair.y0);
+        handleOverflows(pair.x1, pair.y1);
+    }
+}
 
-// enum struct RandomPairGenerationMethod : u8 {
-//     None,
-//     Uniform,
-//     Clustered
-// };
+void toJson(core::StrBuilder& sb, const Pair pair) {
+    using namespace core;
 
-// struct CommandLineArguments {
-//     RandomPairGenerationMethod genMethod;
-//     u64 seed;
-//     addr_size pairCount;
-//     core::StrBuilder<> outFileSb;
-// };
+    constexpr addr_size bufferMax = 254;
+    char buff[bufferMax] = {};
+    char* start = buff;
+    char* curr = buff;
 
-// void printUsage() {
-//     printf("Usage: ./haversine_generator [uniform/cluster] [random seed] [number of coordinate pairs to generate]\n");
-//     printf("Options:\n");
-//     printf("  --help: Print this help message\n");
-//     printf("  -o [filepath]: Output file path (optional)\n");
-// }
+    curr = core::cptrCopyUnsafe(curr, "{\"x0\":");
+    curr += core::floatToCptr(pair.x0, curr, bufferMax, 15);
+    curr = core::cptrCopyUnsafe(curr, ", \"y0\":");
+    curr += core::floatToCptr(pair.y0, curr, bufferMax, 15);
+    curr = core::cptrCopyUnsafe(curr, ", \"x1\":");
+    curr += core::floatToCptr(pair.x1, curr, bufferMax, 15);
+    curr = core::cptrCopyUnsafe(curr, ", \"y1\":");
+    curr += core::floatToCptr(pair.y1, curr, bufferMax, 15);
+    curr = core::cptrCopyUnsafe(curr, "}");
 
-// bool parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdArgs) {
-//     cmdArgs = CommandLineArguments{};
+    sb.append(buff, curr - start);
+}
 
-//     core::CmdFlagParser flagParser;
+void toJson(core::StrBuilder& sb, const Pair* pairs, addr_size pCount) {
+    sb.append("{\n"_sv);
+    for (addr_size i = 0; i < pCount; i++) {
+        toJson(sb, pairs[i]);
+        sb.append(",\n"_sv);
+    }
+    sb.append("}\n"_sv);
+}
 
-//     Expect(
-//         flagParser.parse(argc, argv),
-//         "Failed to parse command line flags!"
-//     );
+struct CommandLineArguments {
+    RandomPairGenerationMethod genMethod;
+    u64 seed;
+    addr_size pairCount;
+    core::StrBuilder outFileSb;
+};
 
-//     // Set flags:
-//     flagParser.setFlagString(&cmdArgs.outFileSb, core::sv("o"), false, nullptr);
+void printUsage() {
+    using core::logf;
 
-//     // Match flags:
-//     Expect(flagParser.matchFlags(), "Failed to match command line flags!");
+    logf("Usage: ./haversine_generator <uniform/cluster> <random seed> <number of coordinate pairs to generate> [filepath]\n");
+}
 
-//     // Handle help option:
-//     {
-//         bool isHelpOption = false;
-//         flagParser.options([&isHelpOption](core::StrView option) {
-//             if (option.eq(core::sv("--help"))) {
-//                 printUsage();
-//                 isHelpOption = true;
-//                 return false;
-//             }
-//             return true;
-//         });
-//         if (isHelpOption) {
-//             return true;
-//         }
-//     }
+core::expected<CommandLineArguments, i32> parseCmdArguments(u32 argc, const char** argv) {
+    using namespace core;
 
-//     // Verify argument count is more than the expected minimum:
-//     if (flagParser.argumentCount() < 3) {
-//         fprintf(stderr, "Invalid number of arguments!\n");
-//         printUsage();
-//         return false;
-//     }
+    CmdFlagParser flagParser;
+    Expect(flagParser.parse(argc, argv), "Failed to parse command line flags!");
 
-//     // Set the arguments, and verify they are valid:
-//     {
-//         bool argsOk = true;
-//         flagParser.arguments([&argsOk, &cmdArgs](core::StrView value, addr_size idx) {
-//             switch (idx) {
-//                 case 0:
-//                 {
-//                     if (value.eq(core::sv("uniform"))) {
-//                         cmdArgs.genMethod = RandomPairGenerationMethod::Uniform;
-//                     }
-//                     else if (value.eq(core::sv("cluster"))) {
-//                         cmdArgs.genMethod = RandomPairGenerationMethod::Clustered;
-//                     }
-//                     else {
-//                         fprintf(stderr, "Invalid random pair generation method!\n");
-//                         printUsage();
-//                         argsOk = false;
-//                         return false;
-//                     }
+    if (flagParser.argumentCount() < 3) {
+        logf("Error: Invalid number of arguments!\n\n");
+        printUsage();
+        return core::unexpected(-1);
+    }
 
-//                     break;
-//                 }
+    CommandLineArguments cmdArgs;
+    bool argumentsAreValid = true;
+    flagParser.arguments([&argumentsAreValid, &cmdArgs] (StrView value, addr_size idx) -> bool {
+        switch (idx) {
+            case 0:
+            {
+                if (value.eq("uniform"_sv)) {
+                    cmdArgs.genMethod = RandomPairGenerationMethod::Uniform;
+                }
+                else if (value.eq("cluster"_sv)) {
+                    cmdArgs.genMethod = RandomPairGenerationMethod::Clustered;
+                }
+                else {
+                    logf("Error: '%s' is an invalid random pair generation method!\n\n", value.data());
+                    printUsage();
+                    argumentsAreValid = false;
+                    return false;
+                }
 
-//                 case 1:
-//                 {
-//                     cmdArgs.seed = core::cptrToInt<u64>(value.data());
-//                     break;
-//                 }
+                break;
+            }
 
-//                 case 2:
-//                 {
-//                     cmdArgs.pairCount = core::cptrToInt<addr_size>(value.data());
-//                     break;
-//                 }
+            case 1:
+            {
+                cmdArgs.seed = cptrToInt<u64>(value.data());
+                break;
+            }
 
-//                 default:
-//                 {
-//                     fprintf(stderr, "Invalid number of arguments!\n");
-//                     printUsage();
-//                     argsOk = false;
-//                     return false;
-//                 }
-//             }
+            case 2:
+            {
+                cmdArgs.pairCount = cptrToInt<addr_size>(value.data());
+                if (cmdArgs.pairCount == 0) {
+                    logf("Error: pairs count must be greater than 0!\n\n");
+                    printUsage();
+                    argumentsAreValid = false;
+                    return false;
+                }
 
-//             return true;
-//         });
-//         if (!argsOk) {
-//             return false;
-//         }
-//     }
+                break;
+            }
 
-//     printf("Method: %s\n", cmdArgs.genMethod == RandomPairGenerationMethod::Uniform ? "Uniform" : "Clustered");
-//     printf("Random seed: %lu\n", cmdArgs.seed);
-//     printf("Pair count: %zu\n", cmdArgs.pairCount);
+            case 3:
+            {
+                cmdArgs.outFileSb = StrBuilder(value);
+                break;
+            }
+        }
 
-//     return true;
-// }
+        return true;
+    });
 
-i32 main(i32, const char**) {
-    coreInit();
+    if (!argumentsAreValid) {
+        return core::unexpected(-2);
+    }
 
-    // CommandLineArguments cmdArgs;
-    // if (!parserCmdArguments(argc, argv, cmdArgs)) {
-    //     return -2;
-    // }
+    return cmdArgs;
+}
 
-    // core::rndInit(cmdArgs.seed);
+i32 main(i32 argc, const char** argv) {
+    Panic(coreInit());
 
-    // Pair* pairs = dalloc<Pair>(cmdArgs.pairCount);
-    // defer { dfree<Pair>(pairs, cmdArgs.pairCount); };
+    auto parseRes = parseCmdArguments(argc, argv);
+    if (parseRes.hasErr()) {
+        return parseRes.err();
+    }
+    auto cmdArgs = std::move(parseRes.value());
 
-    // if (cmdArgs.genMethod == RandomPairGenerationMethod::Uniform) {
-    //     generateRandomUniformPairs(pairs, cmdArgs.pairCount);
-    // }
-    // else if (cmdArgs.genMethod == RandomPairGenerationMethod::Clustered) {
-    //     generateRandomClusteredPairs(pairs, cmdArgs.pairCount);
-    // }
-    // else {
-    //     Panic(false, "Implementation bug!");
-    // }
+    // Initialize the random number generator:
+    core::rndInit(cmdArgs.seed, u32(cmdArgs.seed));
 
-    // if (cmdArgs.outFileSb.empty()) {
-    //     cmdArgs.outFileSb = core::sv("pairs.json");
-    // }
-    // printf("Output file: %s\n", cmdArgs.outFileSb.view().data());
+    // Allocate memory for the pairs:
+    Pair* pairs = reinterpret_cast<Pair*>(core::alloc(cmdArgs.pairCount, sizeof(Pair)));
+    defer { core::free(pairs, cmdArgs.pairCount, sizeof(Pair)); };
 
-    // pairsToJSON(pairs, cmdArgs.pairCount, cmdArgs.outFileSb.view().data());
+    if (cmdArgs.genMethod == RandomPairGenerationMethod::Uniform) {
+        generateRandomUniformPairs(pairs, cmdArgs.pairCount);
+    }
+    else if (cmdArgs.genMethod == RandomPairGenerationMethod::Clustered) {
+        generateRandomClusteredPairs(pairs, cmdArgs.pairCount);
+    }
+    else {
+        Panic(false, "Implementation bug!");
+    }
 
-    // return 0;
+    if (cmdArgs.outFileSb.empty()) {
+        cmdArgs.outFileSb = core::sv("pairs.json");
+    }
+    logInfo("Output file: %s\n", cmdArgs.outFileSb.view().data());
+
+    core::StrBuilder pairsSb;
+    toJson(pairsSb, pairs, cmdArgs.pairCount);
+    logInfo("Pairs: \n%s\n", pairsSb.view().data());
+
+    core::Expect(
+        core::fileWriteEntire(cmdArgs.outFileSb.view().data(),
+                              reinterpret_cast<const u8*>(pairsSb.view().data()),
+                              pairsSb.len()),
+        "Failed to write pairs to file!"
+    );
+    logInfo("Successfully wrote pairs to %s\n", cmdArgs.outFileSb.view().data());
+
+    return 0;
 }
