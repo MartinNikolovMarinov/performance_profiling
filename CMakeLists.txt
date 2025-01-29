@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 project(STL_VIEWER VERSION 0.1.0 LANGUAGES CXX)
 
 set(haversine_generator_target haversine_generator)
+set(haversine_parser_target haversine_parser)
 set(sandbox_target sandbox)
 
 # Standard Requirements:
@@ -62,34 +63,45 @@ set(haversine_generator_src
     src/haversine_distance.cpp
 )
 
+set(haversine_parser_src
+    haversine_parser.cpp
+    src/core_init.cpp
+    src/haversine_distance.cpp
+)
+
 set(sandbox_src sandbox.cpp)
 
 # ---------------------------------------- End Declare Source Files ----------------------------------------------------
 
 # ---------------------------------------- Begin Create Executable -----------------------------------------------------
 
-add_executable(${haversine_generator_target} ${haversine_generator_src})
-target_link_libraries(${haversine_generator_target} PUBLIC
-    core # link with corelib
-)
-target_include_directories(${haversine_generator_target} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-target_compile_definitions(${haversine_generator_target} PUBLIC
-    "PERF_APP_DEBUG=$<BOOL:${PERF_APP_DEBUG}>"
-    "USE_ANSI_LOGGING=$<BOOL:${USE_ANSI_LOGGING}>"
-    # PERF_APP_DATA_DIR="${CMAKE_BINARY_DIR}/data"
-)
-perf_app_target_set_default_flags(${haversine_generator_target} ${PERF_APP_DEBUG} false)
+function(create_exe target_name src_files)
+    # Add the executable
+    add_executable(${target_name} ${src_files})
 
-add_executable(${sandbox_target} ${sandbox_src})
-target_link_libraries(${sandbox_target} PUBLIC
-    core # link with corelib
-)
-target_compile_definitions(${sandbox_target} PUBLIC
-    "PERF_APP_DEBUG=$<BOOL:${PERF_APP_DEBUG}>"
-    "USE_ANSI_LOGGING=$<BOOL:${USE_ANSI_LOGGING}>"
-    # PERF_APP_DATA_DIR="${CMAKE_BINARY_DIR}/data"
-)
+    # Link libraries
+    target_link_libraries(${target_name} PUBLIC
+        core # link with corelib
+    )
+
+    # Include directories
+    target_include_directories(${target_name} PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+    # Compile definitions
+    target_compile_definitions(${target_name} PUBLIC
+        "PERF_APP_DEBUG=$<BOOL:${PERF_APP_DEBUG}>"
+        "USE_ANSI_LOGGING=$<BOOL:${USE_ANSI_LOGGING}>"
+        # PERF_APP_DATA_DIR="${CMAKE_BINARY_DIR}/data"
+    )
+
+    # Set default flags
+    perf_app_target_set_default_flags(${target_name} ${PERF_APP_DEBUG} false)
+endfunction()
+
+create_exe("${haversine_generator_target}" "${haversine_generator_src}")
+create_exe("${haversine_parser_target}" "${haversine_parser_src}")
+create_exe("${sandbox_target}" "${sandbox_src}")
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------

@@ -8,9 +8,13 @@
             "name": "Debug Test with GCC",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/haversine_generator",
-            "args": ["uniform", "1234", "314"],
-            // "args": ["${workspaceFolder}/build/pairs.json", "5085.5938094137336520"],
+
+            // "program": "${workspaceFolder}/build/haversine_generator",
+            // "args": ["uniform", "1234", "314"],
+
+            "program": "${workspaceFolder}/build/haversine_parser",
+            "args": ["${workspaceFolder}/build/pairs.json", "${workspaceFolder}/build/pairs.json.res"],
+
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
