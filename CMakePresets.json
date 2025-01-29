@@ -1,33 +1,28 @@
 {
-    "version": 3,
-    "configurePresets": [
-        {
-            "name": "debug",
-            "displayName": "Debug configuration.",
-            "description": "Debug configuration in debug mode.",
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-
-                "CORE_ASSERT_ENABLED": "ON",
-                "CORE_LIBRARY_SHARED": "OFF",
-                "CORE_BUILD_TESTS": "OFF",
-                "CORE_RUN_COMPILETIME_TESTS": "OFF"
-            }
-        },
-        {
-            "name": "release",
-            "displayName": "Release configuration.",
-            "description": "Release configuration.",
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-
-                "CORE_ASSERT_ENABLED": "OFF",
-                "CORE_LIBRARY_SHARED": "OFF",
-                "CORE_BUILD_TESTS": "OFF",
-                "CORE_RUN_COMPILETIME_TESTS": "OFF"
-            }
-        }
-    ]
+	"version": 3,
+	"configurePresets": [
+		{
+			"name": "release",
+			"displayName": "Release configuration",
+			"description": "Release configuration",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"USE_ANSI_LOGGING": "ON",
+				"PERF_APP_DEBUG": "OFF"
+			}
+		},
+		{
+			"name": "debug",
+			"displayName": "Debug configuration",
+			"description": "Debug configuration",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"USE_ANSI_LOGGING": "ON",
+				"PERF_APP_DEBUG": "ON"
+			}
+		}
+	]
 }
+

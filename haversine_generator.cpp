@@ -59,7 +59,7 @@ void generateRandomClusteredPairs(Pair* pairs, addr_size pCount) {
     }
 }
 
-void toJson(core::StrBuilder& sb, const Pair pair) {
+void toJson(core::StrBuilder<>& sb, const Pair pair) {
     using namespace core;
 
     constexpr addr_size bufferMax = 254;
@@ -67,20 +67,20 @@ void toJson(core::StrBuilder& sb, const Pair pair) {
     char* start = buff;
     char* curr = buff;
 
-    curr = core::cptrCopyUnsafe(curr, "{\"x0\":");
-    curr += core::floatToCptr(pair.x0, curr, bufferMax, 15);
-    curr = core::cptrCopyUnsafe(curr, ", \"y0\":");
-    curr += core::floatToCptr(pair.y0, curr, bufferMax, 15);
-    curr = core::cptrCopyUnsafe(curr, ", \"x1\":");
-    curr += core::floatToCptr(pair.x1, curr, bufferMax, 15);
-    curr = core::cptrCopyUnsafe(curr, ", \"y1\":");
-    curr += core::floatToCptr(pair.y1, curr, bufferMax, 15);
-    curr = core::cptrCopyUnsafe(curr, "}");
+    curr = core::memcopy(curr, "{\"x0\":", core::cstrLen("{\"x0\":"));
+    curr += core::Unpack(core::floatToCstr(pair.x0, curr, bufferMax));
+    curr = core::memcopy(curr, ", \"y0\":", core::cstrLen(", \"y0\":"));
+    curr += core::Unpack(core::floatToCstr(pair.y0, curr, bufferMax));
+    curr = core::memcopy(curr, ", \"x1\":", core::cstrLen(", \"x1\":"));
+    curr += core::Unpack(core::floatToCstr(pair.x1, curr, bufferMax));
+    curr = core::memcopy(curr, ", \"y1\":", core::cstrLen(", \"y1\":"));
+    curr += core::Unpack(core::floatToCstr(pair.y1, curr, bufferMax));
+    curr = core::memcopy(curr, "}", core::cstrLen("}"));
 
     sb.append(buff, curr - start);
 }
 
-void toJson(core::StrBuilder& sb, const Pair* pairs, addr_size pCount) {
+void toJson(core::StrBuilder<>& sb, const Pair* pairs, addr_size pCount) {
     sb.append("{\n"_sv);
     for (addr_size i = 0; i < pCount; i++) {
         toJson(sb, pairs[i]);
@@ -93,30 +93,25 @@ struct CommandLineArguments {
     RandomPairGenerationMethod genMethod;
     u64 seed;
     addr_size pairCount;
-    core::StrBuilder outFileSb;
+    core::StrBuilder<> outFileSb;
 };
 
 void printUsage() {
-    using core::logf;
-
-    logf("Usage: ./haversine_generator <uniform/cluster> <random seed> <number of coordinate pairs to generate> [filepath]\n");
+    core::logDirectStd("Usage: ./haversine_generator <uniform/cluster> <random seed> <number of coordinate pairs to generate> [filepath]\n");
 }
 
-core::expected<CommandLineArguments, i32> parseCmdArguments(u32 argc, const char** argv) {
-    using namespace core;
-
-    CmdFlagParser flagParser;
-    Expect(flagParser.parse(argc, argv), "Failed to parse command line flags!");
+CommandLineArguments parseCmdArguments(u32 argc, const char** argv) {
+    core::CmdFlagParser flagParser;
+    core::Expect(flagParser.parse(argc, argv), "Failed to parse command line flags!");
 
     if (flagParser.argumentCount() < 3) {
-        logf("Error: Invalid number of arguments!\n\n");
         printUsage();
-        return core::unexpected(-1);
+        Panic(false, "Invalid number of arguments!");
     }
 
     CommandLineArguments cmdArgs;
     bool argumentsAreValid = true;
-    flagParser.arguments([&argumentsAreValid, &cmdArgs] (StrView value, addr_size idx) -> bool {
+    flagParser.arguments([&argumentsAreValid, &cmdArgs] (core::StrView value, addr_size idx) -> bool {
         switch (idx) {
             case 0:
             {
@@ -127,7 +122,7 @@ core::expected<CommandLineArguments, i32> parseCmdArguments(u32 argc, const char
                     cmdArgs.genMethod = RandomPairGenerationMethod::Clustered;
                 }
                 else {
-                    logf("Error: '%s' is an invalid random pair generation method!\n\n", value.data());
+                    logErr("Error: '%s' is an invalid random pair generation method!\n\n", value.data());
                     printUsage();
                     argumentsAreValid = false;
                     return false;
@@ -138,15 +133,15 @@ core::expected<CommandLineArguments, i32> parseCmdArguments(u32 argc, const char
 
             case 1:
             {
-                cmdArgs.seed = cptrToInt<u64>(value.data());
+                cmdArgs.seed = core::Unpack(core::cstrToInt<u64>(value.data(), u32(value.len())));
                 break;
             }
 
             case 2:
             {
-                cmdArgs.pairCount = cptrToInt<addr_size>(value.data());
+                cmdArgs.pairCount =  core::Unpack(core::cstrToInt<addr_size>(value.data(), u32(value.len())));
                 if (cmdArgs.pairCount == 0) {
-                    logf("Error: pairs count must be greater than 0!\n\n");
+                    logErr("Error: pairs count must be greater than 0!\n\n");
                     printUsage();
                     argumentsAreValid = false;
                     return false;
@@ -157,7 +152,7 @@ core::expected<CommandLineArguments, i32> parseCmdArguments(u32 argc, const char
 
             case 3:
             {
-                cmdArgs.outFileSb = StrBuilder(value);
+                cmdArgs.outFileSb = core::StrBuilder(value);
                 break;
             }
         }
@@ -165,28 +160,22 @@ core::expected<CommandLineArguments, i32> parseCmdArguments(u32 argc, const char
         return true;
     });
 
-    if (!argumentsAreValid) {
-        return core::unexpected(-2);
-    }
+    Panic(argumentsAreValid, "Invalid input arguments!");
 
     return cmdArgs;
 }
 
 i32 main(i32 argc, const char** argv) {
-    Panic(coreInit());
+    coreInit();
 
-    auto parseRes = parseCmdArguments(argc, argv);
-    if (parseRes.hasErr()) {
-        return parseRes.err();
-    }
-    auto cmdArgs = std::move(parseRes.value());
+    auto cmdArgs = parseCmdArguments(argc, argv);
 
     // Initialize the random number generator:
     core::rndInit(cmdArgs.seed, u32(cmdArgs.seed));
 
     // Allocate memory for the pairs:
-    Pair* pairs = reinterpret_cast<Pair*>(core::alloc(cmdArgs.pairCount, sizeof(Pair)));
-    defer { core::free(pairs, cmdArgs.pairCount, sizeof(Pair)); };
+    Pair* pairs = reinterpret_cast<Pair*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).alloc(cmdArgs.pairCount, sizeof(Pair)));
+    defer { core::getAllocator(core::DEFAULT_ALLOCATOR_ID).free(pairs, cmdArgs.pairCount, sizeof(Pair)); };
 
     if (cmdArgs.genMethod == RandomPairGenerationMethod::Uniform) {
         generateRandomUniformPairs(pairs, cmdArgs.pairCount);
