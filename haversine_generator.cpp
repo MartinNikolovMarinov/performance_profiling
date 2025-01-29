@@ -1,4 +1,5 @@
 #include <core_init.h>
+#include <haversine_distance.h>
 
 enum struct RandomPairGenerationMethod : u8 {
     None,
@@ -10,8 +11,11 @@ struct Pair {
     f64 x0, y0, x1, y1;
 };
 
-void generateRandomUniformPairs(Pair* pairs, addr_size pCount) {
+void generateRandomUniformPairs(Pair* pairs, addr_size pCount, f64* refSum) {
     logInfo("Generating %zu random uniform pairs", pCount);
+
+    f64 sumCoef = 1.0 / f64(pCount);
+    *refSum = 0;
 
     for (addr_size i = 0; i < pCount; i++) {
         Pair& pair = pairs[i];
@@ -20,11 +24,16 @@ void generateRandomUniformPairs(Pair* pairs, addr_size pCount) {
         pair.y0 = core::rndF64(-90.0, 90.0);
         pair.x1 = core::rndF64(-180.0, 180.0);
         pair.y1 = core::rndF64(-90.0, 90.0);
+
+        *refSum += sumCoef * referenceHaversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS_KM);
     }
 }
 
-void generateRandomClusteredPairs(Pair* pairs, addr_size pCount) {
-    logInfo("Generating %zu random clustered pairs", pCount);
+void generateRandomClusteredPairs(Pair* pairs, addr_size pCount, f64* refSum) {
+    f64 sumCoef = 1.0 / f64(pCount);
+    *refSum = 0;
+
+    logTrace("Generating %zu random clustered pairs", pCount);
 
     constexpr u32 CLUSTER_COUNT = 64;
     struct Cluster { f64 x, y, r; };
@@ -56,6 +65,8 @@ void generateRandomClusteredPairs(Pair* pairs, addr_size pCount) {
 
         handleOverflows(pair.x0, pair.y0);
         handleOverflows(pair.x1, pair.y1);
+
+        *refSum += sumCoef * referenceHaversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS_KM);
     }
 }
 
@@ -81,12 +92,12 @@ void toJson(core::StrBuilder<>& sb, const Pair pair) {
 }
 
 void toJson(core::StrBuilder<>& sb, const Pair* pairs, addr_size pCount) {
-    sb.append("{\n"_sv);
+    sb.append("[\n"_sv);
     for (addr_size i = 0; i < pCount; i++) {
         toJson(sb, pairs[i]);
         sb.append(",\n"_sv);
     }
-    sb.append("}\n"_sv);
+    sb.append("]\n"_sv);
 }
 
 struct CommandLineArguments {
@@ -177,11 +188,12 @@ i32 main(i32 argc, const char** argv) {
     Pair* pairs = reinterpret_cast<Pair*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).alloc(cmdArgs.pairCount, sizeof(Pair)));
     defer { core::getAllocator(core::DEFAULT_ALLOCATOR_ID).free(pairs, cmdArgs.pairCount, sizeof(Pair)); };
 
+    f64 haversineSum;
     if (cmdArgs.genMethod == RandomPairGenerationMethod::Uniform) {
-        generateRandomUniformPairs(pairs, cmdArgs.pairCount);
+        generateRandomUniformPairs(pairs, cmdArgs.pairCount, &haversineSum);
     }
     else if (cmdArgs.genMethod == RandomPairGenerationMethod::Clustered) {
-        generateRandomClusteredPairs(pairs, cmdArgs.pairCount);
+        generateRandomClusteredPairs(pairs, cmdArgs.pairCount, &haversineSum);
     }
     else {
         Panic(false, "Implementation bug!");
@@ -190,19 +202,43 @@ i32 main(i32 argc, const char** argv) {
     if (cmdArgs.outFileSb.empty()) {
         cmdArgs.outFileSb = core::sv("pairs.json");
     }
-    logInfo("Output file: %s\n", cmdArgs.outFileSb.view().data());
 
-    core::StrBuilder pairsSb;
-    toJson(pairsSb, pairs, cmdArgs.pairCount);
-    logInfo("Pairs: \n%s\n", pairsSb.view().data());
+    auto outFileSb = std::move(cmdArgs.outFileSb);
+    auto pairCount = cmdArgs.pairCount;
+    auto outReferenceResultFileSb = outFileSb.copy();
+    outReferenceResultFileSb.append(".res"_sv);
 
-    core::Expect(
-        core::fileWriteEntire(cmdArgs.outFileSb.view().data(),
-                              reinterpret_cast<const u8*>(pairsSb.view().data()),
-                              pairsSb.len()),
-        "Failed to write pairs to file!"
-    );
-    logInfo("Successfully wrote pairs to %s\n", cmdArgs.outFileSb.view().data());
+    {
+        core::StrBuilder pairsSb;
+        toJson(pairsSb, pairs, pairCount);
+        logTrace("Pairs: \n%.*s\n", pairsSb.view().len(), pairsSb.view().data());
+        core::Expect(
+            core::fileWriteEntire(outFileSb.view().data(),
+                                  reinterpret_cast<const u8*>(pairsSb.view().data()),
+                                  pairsSb.len()),
+            "Failed to write pairs to file!"
+        );
+
+        logInfo("Successfully wrote pairs to '%s'", outFileSb.view().data());
+    }
+
+    {
+        // haversineSum
+        constexpr addr_size buffLen = 32;
+        char buff[buffLen] = {};
+        u32 n = core::Unpack(core::floatToCstr(haversineSum, buff, buffLen));
+
+        logInfo("Expected Result: %.*s", n, buff);
+
+        buff[n++] = '\n'; // add a new line.
+
+        core::Expect(
+            core::fileWriteEntire(outReferenceResultFileSb.view().data(), reinterpret_cast<const u8*>(buff), n),
+            "Failed to write pairs to file!"
+        );
+
+        logInfo("Successfully wrote output reference result to '%s'", outReferenceResultFileSb.view().data());
+    }
 
     return 0;
 }

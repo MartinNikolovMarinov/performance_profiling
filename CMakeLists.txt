@@ -58,6 +58,7 @@ log_info("---------------------------------------------")
 set(haversine_generator_src
     haversine_generator.cpp
     src/core_init.cpp
+    src/haversine_distance.cpp
 )
 
 # ---------------------------------------- End Declare Source Files ----------------------------------------------------
