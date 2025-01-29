@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/haversine_generator",
-            "args": ["cluster", "1234", "314"],
+            "args": ["uniform", "1234", "314"],
             // "args": ["${workspaceFolder}/build/pairs.json", "5085.5938094137336520"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

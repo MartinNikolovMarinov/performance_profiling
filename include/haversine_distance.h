@@ -1,3 +1,5 @@
+#pragma once
+
 #include <core_init.h>
 
 constexpr f64 EARTH_RADIUS_KM = 6372.8;

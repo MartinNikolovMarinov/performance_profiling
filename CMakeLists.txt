@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 project(STL_VIEWER VERSION 0.1.0 LANGUAGES CXX)
 
 set(haversine_generator_target haversine_generator)
+set(sandbox_target sandbox)
 
 # Standard Requirements:
 
@@ -61,6 +62,8 @@ set(haversine_generator_src
     src/haversine_distance.cpp
 )
 
+set(sandbox_src sandbox.cpp)
+
 # ---------------------------------------- End Declare Source Files ----------------------------------------------------
 
 # ---------------------------------------- Begin Create Executable -----------------------------------------------------
@@ -78,5 +81,15 @@ target_compile_definitions(${haversine_generator_target} PUBLIC
     # PERF_APP_DATA_DIR="${CMAKE_BINARY_DIR}/data"
 )
 perf_app_target_set_default_flags(${haversine_generator_target} ${PERF_APP_DEBUG} false)
+
+add_executable(${sandbox_target} ${sandbox_src})
+target_link_libraries(${sandbox_target} PUBLIC
+    core # link with corelib
+)
+target_compile_definitions(${sandbox_target} PUBLIC
+    "PERF_APP_DEBUG=$<BOOL:${PERF_APP_DEBUG}>"
+    "USE_ANSI_LOGGING=$<BOOL:${USE_ANSI_LOGGING}>"
+    # PERF_APP_DATA_DIR="${CMAKE_BINARY_DIR}/data"
+)
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------

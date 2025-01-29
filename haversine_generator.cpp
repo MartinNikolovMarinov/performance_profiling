@@ -11,11 +11,11 @@ struct Pair {
     f64 x0, y0, x1, y1;
 };
 
-void generateRandomUniformPairs(Pair* pairs, addr_size pCount, f64* refSum) {
+void generateRandomUniformPairs(Pair* pairs, f64* results, addr_size pCount) {
     logInfo("Generating %zu random uniform pairs", pCount);
 
+    f64 sum = 0;
     f64 sumCoef = 1.0 / f64(pCount);
-    *refSum = 0;
 
     for (addr_size i = 0; i < pCount; i++) {
         Pair& pair = pairs[i];
@@ -25,13 +25,19 @@ void generateRandomUniformPairs(Pair* pairs, addr_size pCount, f64* refSum) {
         pair.x1 = core::rndF64(-180.0, 180.0);
         pair.y1 = core::rndF64(-90.0, 90.0);
 
-        *refSum += sumCoef * referenceHaversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS_KM);
+        f64 haversineDistance = referenceHaversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS_KM);
+        results[i] = haversineDistance;
+        sum += sumCoef * haversineDistance;
+
+        logF64("Calculated Haversine Distance:: %.*s", haversineDistance, core::LogLevel::L_DEBUG);
     }
+
+    logF64("Expected sum: %.*s", sum, core::LogLevel::L_INFO);
 }
 
-void generateRandomClusteredPairs(Pair* pairs, addr_size pCount, f64* refSum) {
+void generateRandomClusteredPairs(Pair* pairs, f64* results, addr_size pCount) {
+    f64 sum = 0;
     f64 sumCoef = 1.0 / f64(pCount);
-    *refSum = 0;
 
     logTrace("Generating %zu random clustered pairs", pCount);
 
@@ -66,8 +72,14 @@ void generateRandomClusteredPairs(Pair* pairs, addr_size pCount, f64* refSum) {
         handleOverflows(pair.x0, pair.y0);
         handleOverflows(pair.x1, pair.y1);
 
-        *refSum += sumCoef * referenceHaversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS_KM);
+        f64 haversineDistance = referenceHaversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS_KM);
+        results[i] = haversineDistance;
+        sum += sumCoef * haversineDistance;
+
+        logF64("Calculated Haversine Distance: %.*s", haversineDistance, core::LogLevel::L_DEBUG);
     }
+
+    logF64("Expected sum: %.*s", sum, core::LogLevel::L_INFO);
 }
 
 void toJson(core::StrBuilder<>& sb, const Pair pair) {
@@ -179,21 +191,29 @@ CommandLineArguments parseCmdArguments(u32 argc, const char** argv) {
 i32 main(i32 argc, const char** argv) {
     coreInit();
 
+    // core::setLoggerLevel(core::LogLevel::L_DEBUG);
+
     auto cmdArgs = parseCmdArguments(argc, argv);
 
-    // Initialize the random number generator:
     core::rndInit(cmdArgs.seed, u32(cmdArgs.seed));
 
-    // Allocate memory for the pairs:
-    Pair* pairs = reinterpret_cast<Pair*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).alloc(cmdArgs.pairCount, sizeof(Pair)));
-    defer { core::getAllocator(core::DEFAULT_ALLOCATOR_ID).free(pairs, cmdArgs.pairCount, sizeof(Pair)); };
+    Pair* pairs = defaultAlloc<Pair>(cmdArgs.pairCount);
+    f64* results = defaultAlloc<f64>(cmdArgs.pairCount);
+    defer {
+        defaultFree(pairs, cmdArgs.pairCount);
+        defaultFree(results, cmdArgs.pairCount);
+    };
 
-    f64 haversineSum;
+    logInfo("Random seed: %llu", cmdArgs.seed);
+    logInfo("Pair count: %llu", cmdArgs.pairCount);
+
     if (cmdArgs.genMethod == RandomPairGenerationMethod::Uniform) {
-        generateRandomUniformPairs(pairs, cmdArgs.pairCount, &haversineSum);
+        logInfo("Method: uniform");
+        generateRandomUniformPairs(pairs, results, cmdArgs.pairCount);
     }
     else if (cmdArgs.genMethod == RandomPairGenerationMethod::Clustered) {
-        generateRandomClusteredPairs(pairs, cmdArgs.pairCount, &haversineSum);
+        logInfo("Method: cluster");
+        generateRandomClusteredPairs(pairs, results, cmdArgs.pairCount);
     }
     else {
         Panic(false, "Implementation bug!");
@@ -208,6 +228,7 @@ i32 main(i32 argc, const char** argv) {
     auto outReferenceResultFileSb = outFileSb.copy();
     outReferenceResultFileSb.append(".res"_sv);
 
+    // Write The Pairs
     {
         core::StrBuilder pairsSb;
         toJson(pairsSb, pairs, pairCount);
@@ -219,25 +240,33 @@ i32 main(i32 argc, const char** argv) {
             "Failed to write pairs to file!"
         );
 
-        logInfo("Successfully wrote pairs to '%s'", outFileSb.view().data());
+        logInfo("Wrote Pairs To '%s'", outFileSb.view().data());
     }
 
+    // Write The Distances For Each Pair
     {
-        // haversineSum
-        constexpr addr_size buffLen = 32;
-        char buff[buffLen] = {};
-        u32 n = core::Unpack(core::floatToCstr(haversineSum, buff, buffLen));
-
-        logInfo("Expected Result: %.*s", n, buff);
-
-        buff[n++] = '\n'; // add a new line.
-
         core::Expect(
-            core::fileWriteEntire(outReferenceResultFileSb.view().data(), reinterpret_cast<const u8*>(buff), n),
+            core::fileWriteEntire(outReferenceResultFileSb.view().data(),
+                                  reinterpret_cast<const u8*>(results),
+                                  pairCount * sizeof(f64)),
             "Failed to write pairs to file!"
         );
 
-        logInfo("Successfully wrote output reference result to '%s'", outReferenceResultFileSb.view().data());
+        logInfo("Wrote Results To '%s'", outReferenceResultFileSb.view().data());
+    }
+
+    // Read Distances Back To Verify
+    if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+        core::ArrList<u8> readbackResults;
+        core::Expect(
+            core::fileReadEntire(outReferenceResultFileSb.view().data(), readbackResults),
+            "Failed to write pairs to file!"
+        );
+
+        for (addr_size i = 0; i < readbackResults.len(); i+=sizeof(f64)) {
+            f64* v = reinterpret_cast<f64*>(readbackResults.data() + i); // Do not use [i] ! it's obvious why..
+            logF64("%.*s", *v, core::LogLevel::L_DEBUG);
+        }
     }
 
     return 0;
