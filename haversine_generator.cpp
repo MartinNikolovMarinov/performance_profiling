@@ -29,10 +29,18 @@ void generateRandomUniformPairs(Pair* pairs, f64* results, addr_size pCount) {
         results[i] = haversineDistance;
         sum += sumCoef * haversineDistance;
 
-        logF64("Calculated Haversine Distance:: %.*s", haversineDistance, core::LogLevel::L_DEBUG);
+        if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+            core::logDirectStd("Calculated Haversine Distance = ");
+            logDirectStdF64(haversineDistance);
+            core::logDirectStd("\n");
+        }
     }
 
-    logF64("Expected sum: %.*s", sum, core::LogLevel::L_INFO);
+    if (core::getLogLevel() <= core::LogLevel::L_INFO) {
+        core::logDirectStd("Expected sum: ");
+        logDirectStdF64(sum);
+        core::logDirectStd("\n");
+    };
 }
 
 void generateRandomClusteredPairs(Pair* pairs, f64* results, addr_size pCount) {
@@ -76,10 +84,18 @@ void generateRandomClusteredPairs(Pair* pairs, f64* results, addr_size pCount) {
         results[i] = haversineDistance;
         sum += sumCoef * haversineDistance;
 
-        logF64("Calculated Haversine Distance: %.*s", haversineDistance, core::LogLevel::L_DEBUG);
+        if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+            core::logDirectStd("Calculated Haversine Distance = ");
+            logDirectStdF64(haversineDistance);
+            core::logDirectStd("\n");
+        }
     }
 
-    logF64("Expected sum: %.*s", sum, core::LogLevel::L_INFO);
+    if (core::getLogLevel() <= core::LogLevel::L_INFO) {
+        core::logDirectStd("Expected sum: ");
+        logDirectStdF64(sum);
+        core::logDirectStd("\n");
+    }
 }
 
 void toJson(core::StrBuilder<>& sb, const Pair pair) {
@@ -100,14 +116,18 @@ void toJson(core::StrBuilder<>& sb, const Pair pair) {
     curr += core::Unpack(core::floatToCstr(pair.y1, curr, bufferMax));
     curr = core::memcopy(curr, "}", core::cstrLen("}"));
 
-    sb.append(buff, curr - start);
+    sb.append(buff, addr_size(curr - start));
 }
 
 void toJson(core::StrBuilder<>& sb, const Pair* pairs, addr_size pCount) {
     sb.append("[\n"_sv);
-    for (addr_size i = 0; i < pCount; i++) {
+    for (addr_size i = 0; i < pCount - 1; i++) {
         toJson(sb, pairs[i]);
         sb.append(",\n"_sv);
+    }
+    if (pCount - 1 > 0) {
+        toJson(sb, pairs[pCount - 1]);
+        sb.append('\n');
     }
     sb.append("]\n"_sv);
 }
@@ -123,9 +143,9 @@ void printUsage() {
     core::logDirectStd("Usage: ./haversine_generator <uniform/cluster> <random seed> <number of coordinate pairs to generate> [filepath]\n");
 }
 
-CommandLineArguments parseCmdArguments(u32 argc, const char** argv) {
+CommandLineArguments parseCmdArguments(i32 argc, const char** argv) {
     core::CmdFlagParser flagParser;
-    core::Expect(flagParser.parse(argc, argv), "Failed to parse command line flags!");
+    core::Expect(flagParser.parse(addr_size(argc), argv), "Failed to parse command line flags!");
 
     if (flagParser.argumentCount() < 3) {
         printUsage();
@@ -265,7 +285,10 @@ i32 main(i32 argc, const char** argv) {
 
         for (addr_size i = 0; i < readbackResults.len(); i+=sizeof(f64)) {
             f64* v = reinterpret_cast<f64*>(readbackResults.data() + i); // Do not use [i] ! it's obvious why..
-            logF64("%.*s", *v, core::LogLevel::L_DEBUG);
+            if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+                logDirectStdF64(*v);
+                core::logDirectStd("\n");
+            }
         }
     }
 

@@ -42,3 +42,10 @@ void coreInit() {
     Panic(core::initLogger({}));
     core::setLoggerLevel(core::LogLevel::L_INFO);
 }
+
+void logDirectStdF64(f64 f) {
+    constexpr addr_size buffLen = 32;
+    char buff[buffLen] = {};
+    u32 n = core::Unpack(core::floatToCstr(f, buff, buffLen));
+    core::logDirectStd("%.*s", n, buff);
+}
