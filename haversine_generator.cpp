@@ -211,7 +211,7 @@ CommandLineArguments parseCmdArguments(i32 argc, const char** argv) {
 i32 main(i32 argc, const char** argv) {
     coreInit();
 
-    core::setLoggerLevel(core::LogLevel::L_DEBUG);
+    // core::setLoggerLevel(core::LogLevel::L_DEBUG);
 
     auto cmdArgs = parseCmdArguments(argc, argv);
 

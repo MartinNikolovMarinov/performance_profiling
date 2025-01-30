@@ -236,7 +236,7 @@ void parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdAr
 i32 main(i32 argc, const char** argv) {
     coreInit();
 
-    core::setLoggerLevel(core::LogLevel::L_TRACE);
+    // core::setLoggerLevel(core::LogLevel::L_DEBUG);
 
     CommandLineArguments cmdArgs{};
     parserCmdArguments(argc, argv, cmdArgs);
@@ -266,6 +266,7 @@ i32 main(i32 argc, const char** argv) {
     JSONDecoder decoder(inputJSON.data(), inputJSON.len());
 
     core::StrBuilder<> keysb; // TODO: Make this a stack/slab allocator?
+    addr_size i = 0;
 
     Panic(decoder.pushArr() == JSONDecoderState::HAS_MORE);
     while (true) {
@@ -302,16 +303,23 @@ i32 main(i32 argc, const char** argv) {
         matchAndSetKey(keysb.view(), number, p);
         keysb.clear();
 
-        // Panic(decoder.popObj() == JSONDecoderState::DONE);
-
         auto state = decoder.popObj();
         Assert(!isErrorDecodeState(state));
         p.__debugTraceLog();
+
+        f64 hd = referenceHaversine(p.x0, p.y0, p.x1, p.y1);
+        Panic(hd == answers[i], "Did not match expected answer.");
+
+        i++;
+
         if (state == JSONDecoderState::DONE) {
             break;
         }
     }
     Panic(decoder.popArr() == JSONDecoderState::DONE);
+
+    Panic(i == answers.len(), "Did not calculate the full range of values.");
+    logInfo("Successfully parsered and verified.");
 
     return 0;
 }
