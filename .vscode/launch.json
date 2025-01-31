@@ -10,13 +10,13 @@
             "request": "launch",
 
             // "program": "${workspaceFolder}/build/haversine_generator",
-            // "args": ["uniform", "1234", "314"],
+            // "args": ["cluster", "12351234", "30000000"],
 
             "program": "${workspaceFolder}/build/haversine_parser",
             "args": ["${workspaceFolder}/build/pairs.json", "${workspaceFolder}/build/pairs.json.res"],
 
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/build",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

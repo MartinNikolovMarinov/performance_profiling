@@ -319,7 +319,7 @@ i32 main(i32 argc, const char** argv) {
     Panic(decoder.popArr() == JSONDecoderState::DONE);
 
     Panic(i == answers.len(), "Did not calculate the full range of values.");
-    logInfo("Successfully parsered and verified.");
+    logInfo("Successfully parsered and verified %d values", i);
 
     return 0;
 }
