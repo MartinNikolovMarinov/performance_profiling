@@ -67,6 +67,7 @@ set(haversine_parser_src
     haversine_parser.cpp
     src/core_init.cpp
     src/haversine_distance.cpp
+    src/profiler.cpp
 )
 
 set(sandbox_src sandbox.cpp)

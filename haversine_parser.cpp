@@ -1,5 +1,6 @@
 #include <core_init.h>
 #include <haversine_distance.h>
+#include <profiler.h>
 
 struct Pair {
     f64 x0, y0, x1, y1;
@@ -234,6 +235,8 @@ void parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdAr
 }
 
 i32 main(i32 argc, const char** argv) {
+    beginProfile();
+
     coreInit();
 
     // core::setLoggerLevel(core::LogLevel::L_DEBUG);
@@ -243,6 +246,7 @@ i32 main(i32 argc, const char** argv) {
 
     core::ArrList<char> inputJSON;
     {
+        TIME_BLOCK("Reading the JSON input");
         core::ArrList<u8> inputJSONBytes;
         core::Expect(core::fileReadEntire(cmdArgs.inFileSb.view().data(), inputJSONBytes));
         core::convArrList(inputJSON, std::move(inputJSONBytes));
@@ -250,6 +254,7 @@ i32 main(i32 argc, const char** argv) {
 
     core::ArrList<f64> answers;
     {
+        TIME_BLOCK("Reading the reference answer file");
         core::ArrList<u8> answersBin;
         core::Expect(core::fileReadEntire(cmdArgs.answersFileSb.view().data(), answersBin));
         core::convArrList(answers, std::move(answersBin));
@@ -267,59 +272,70 @@ i32 main(i32 argc, const char** argv) {
 
     core::StrBuilder<> keysb; // TODO: Make this a stack/slab allocator?
     addr_size i = 0;
+    {
+        TIME_BLOCK("Parsing JSON");
+        Panic(decoder.pushArr() == JSONDecoderState::HAS_MORE);
+        while (true) {
+            TIME_BLOCK("Parsing JSON Element");
 
-    Panic(decoder.pushArr() == JSONDecoderState::HAS_MORE);
-    while (true) {
-        Pair p = {};
-        f64 number = 0;
+            Pair p = {};
+            f64 number = 0;
 
-        auto matchAndSetKey = [](core::StrView x, f64 v, Pair& out) {
-            if (x.eq("x0"_sv)) out.x0 = v;
-            else if (x.eq("y0"_sv)) out.y0 = v;
-            else if (x.eq("x1"_sv)) out.x1 = v;
-            else if (x.eq("y1"_sv)) out.y1 = v;
-            else Panic(false, "Pair format is invalid.");
-        };
+            auto matchAndSetKey = [](core::StrView x, f64 v, Pair& out) {
+                if (x.eq("x0"_sv)) out.x0 = v;
+                else if (x.eq("y0"_sv)) out.y0 = v;
+                else if (x.eq("x1"_sv)) out.x1 = v;
+                else if (x.eq("y1"_sv)) out.y1 = v;
+                else Panic(false, "Pair format is invalid.");
+            };
 
-        Panic(decoder.pushObj() == JSONDecoderState::HAS_MORE);
+            Panic(decoder.pushObj() == JSONDecoderState::HAS_MORE);
 
-        Panic(decoder.key(keysb) == JSONDecoderState::DONE);
-        Panic(decoder.number(number) == JSONDecoderState::HAS_MORE);
-        matchAndSetKey(keysb.view(), number, p);
-        keysb.clear();
+            Panic(decoder.key(keysb) == JSONDecoderState::DONE);
+            Panic(decoder.number(number) == JSONDecoderState::HAS_MORE);
+            matchAndSetKey(keysb.view(), number, p);
+            keysb.clear();
 
-        Panic(decoder.key(keysb) == JSONDecoderState::DONE);
-        Panic(decoder.number(number) == JSONDecoderState::HAS_MORE);
-        matchAndSetKey(keysb.view(), number, p);
-        keysb.clear();
+            Panic(decoder.key(keysb) == JSONDecoderState::DONE);
+            Panic(decoder.number(number) == JSONDecoderState::HAS_MORE);
+            matchAndSetKey(keysb.view(), number, p);
+            keysb.clear();
 
-        Panic(decoder.key(keysb) == JSONDecoderState::DONE);
-        Panic(decoder.number(number) == JSONDecoderState::HAS_MORE);
-        matchAndSetKey(keysb.view(), number, p);
-        keysb.clear();
+            Panic(decoder.key(keysb) == JSONDecoderState::DONE);
+            Panic(decoder.number(number) == JSONDecoderState::HAS_MORE);
+            matchAndSetKey(keysb.view(), number, p);
+            keysb.clear();
 
-        Panic(decoder.key(keysb) == JSONDecoderState::DONE);
-        Panic(decoder.number(number) == JSONDecoderState::DONE);
-        matchAndSetKey(keysb.view(), number, p);
-        keysb.clear();
+            Panic(decoder.key(keysb) == JSONDecoderState::DONE);
+            Panic(decoder.number(number) == JSONDecoderState::DONE);
+            matchAndSetKey(keysb.view(), number, p);
+            keysb.clear();
 
-        auto state = decoder.popObj();
-        Assert(!isErrorDecodeState(state));
-        p.__debugTraceLog();
+            auto state = decoder.popObj();
+            Assert(!isErrorDecodeState(state));
+            p.__debugTraceLog();
 
-        f64 hd = referenceHaversine(p.x0, p.y0, p.x1, p.y1);
-        Panic(hd == answers[i], "Did not match expected answer.");
+            {
+                TIME_BLOCK("Haversine Calculation");
 
-        i++;
+                f64 hd = referenceHaversine(p.x0, p.y0, p.x1, p.y1);
+                Panic(hd == answers[i], "Did not match expected answer.");
+            }
 
-        if (state == JSONDecoderState::DONE) {
-            break;
+            i++;
+
+            if (state == JSONDecoderState::DONE) {
+                break;
+            }
         }
+        Panic(decoder.popArr() == JSONDecoderState::DONE);
     }
-    Panic(decoder.popArr() == JSONDecoderState::DONE);
 
     Panic(i == answers.len(), "Did not calculate the full range of values.");
     logInfo("Successfully parsered and verified %d values", i);
+
+    auto result = endProfile();
+    logProfileResult(result, core::LogLevel::L_INFO);
 
     return 0;
 }
