@@ -1,6 +1,5 @@
 #include <core_init.h>
 #include <haversine_distance.h>
-#include <profiler.h>
 
 struct Pair {
     f64 x0, y0, x1, y1;
@@ -235,7 +234,7 @@ void parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdAr
 }
 
 i32 main(i32 argc, const char** argv) {
-    beginProfile();
+    core::beginProfile();
 
     coreInit();
 
@@ -334,8 +333,8 @@ i32 main(i32 argc, const char** argv) {
     Panic(i == answers.len(), "Did not calculate the full range of values.");
     logInfo("Successfully parsered and verified %d values", i);
 
-    auto result = endProfile();
-    logProfileResult(result, core::LogLevel::L_INFO);
+    auto result = core::endProfile();
+    core::logProfileResult(result, core::LogLevel::L_INFO);
 
     return 0;
 }
