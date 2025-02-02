@@ -46,30 +46,35 @@ ProfileResult endProfile() {
 
 namespace {
 
-void logElapsed(u64 totalElapsedTsc, u64 freq, const ProfileTimePoint& a) {
-    // Elapsed in the entire time block:
-    u64 entireBlockElapsedTsc = a.elapsedTsc;
-    u64 entireBlockElapsedNS = u64(core::CORE_SECOND * (f64(entireBlockElapsedTsc) / f64(freq)));
-    char entireBlockElapsedStr[255] = {};
-    core::testing::elapsedTimeToStr(entireBlockElapsedStr, entireBlockElapsedNS);
-    f64 entireBlockPercent = 100.0 * (f64(entireBlockElapsedTsc) / f64(totalElapsedTsc));
+inline void logElapsed(addr_size i, u64 totalElapsedTsc, u64 freq, const ProfileTimePoint& a) {
+    char buffer[255];
+    auto& label = a.label;
+    u64 hits = a.hitCount;
+
+    core::logDirectStd("%llu. %s\n", i, label);
+    core::logDirectStd("    - Hits       : %llu\n", hits);
 
     // Elapsed only in current block
-    u64 currBlockElapsedTsc = a.elapsedTsc - a.elapsedChildrenTsc;
-    u64 currBlockElapsedNS = u64(core::CORE_SECOND * (f64(currBlockElapsedTsc) / f64(freq)));
-    char currBlockElapsedStr[255] = {};
-    core::testing::elapsedTimeToStr(currBlockElapsedStr, currBlockElapsedNS);
-    f64 currBlockPercent = 100.0 * (f64(currBlockElapsedTsc) / f64(totalElapsedTsc));
+    {
+        u64 tsc = a.elapsedTsc - a.elapsedChildrenTsc;
+        u64 elapsedNS = u64(core::CORE_SECOND * (f64(tsc) / f64(freq)));
+        core::testing::elapsedTimeToStr(buffer, elapsedNS);
+        f64 percent = 100.0 * (f64(tsc) / f64(totalElapsedTsc));
+        core::logDirectStd("    - Self Time  : %s (%llu, %.2f%%)\n", buffer, tsc, percent);
+    }
 
-    core::logDirectStd("    \"%s\": hits=%llu, tsc=%llu (%s, %.2f%%, %.2f%% w/children)\n",
-                       a.label, a.hitCount,
-                       currBlockElapsedTsc,
-                       currBlockElapsedStr, currBlockPercent, entireBlockPercent);
+    if (a.elapsedTsc != a.elapsedChildrenTsc) {
+        u64 tsc = a.elapsedAtRootTsc;
+        u64 elapsedNS = u64(core::CORE_SECOND * (f64(tsc) / f64(freq)));
+        core::testing::elapsedTimeToStr(buffer, elapsedNS);
+        f64 percent = 100.0 * (f64(tsc) / f64(totalElapsedTsc));
+        core::logDirectStd("    - Total Time : %s (%llu, %.2f%%)\n", buffer, tsc, percent);
+    }
 };
 
 } // namespace
 
-void logProfileResult(const ProfileResult& result, core::LogLevel logLevel, u8 logTag) {
+void logProfileResult(const ProfileResult& result, core::LogLevel logLevel) {
     if (logLevel < core::getLogLevel()) {
         return;
     }
@@ -81,14 +86,15 @@ void logProfileResult(const ProfileResult& result, core::LogLevel logLevel, u8 l
     char totalElapsedStr[core::testing::ELAPSED_TIME_TO_STR_BUFFER_SIZE];
     core::testing::elapsedTimeToStr(totalElapsedStr, totalElapsedNs);
 
-    core::__log(logTag, logLevel, core::LogSpecialMode::SECTION_TITLE, "logProfileResult", "BEGIN CPU PROFILE");
-    core::logDirectStd("  Estimated CPU Frequency: %lluHZ (%.4fGHZ)\n", freq, f64(freq) / 1000000000.0);
-    core::logDirectStd("  Total: time=%s, tsc=%llu\n", totalElapsedStr, totalElapsedTsc);
+    core::logDirectStd("--- CPU Profile Summary ---\n");
+    core::logDirectStd("CPU Frequency : %llu Hz (%.4f GHz)\n", freq, f64(freq) / 1000000000.0);
+    core::logDirectStd("Total         : %s, %llu\n", totalElapsedStr, totalElapsedTsc);
+     core::logDirectStd("\n");
 
     for (addr_size i = 0; i < result.timepoints.len(); i++) {
         auto& a = result.timepoints[i];
         if (a.isUsed()) {
-            logElapsed(totalElapsedTsc, freq, a);
+            logElapsed(i, totalElapsedTsc, freq, a);
         }
     }
 }

@@ -15,6 +15,7 @@
         "iterator": "cpp",
         "algorithm": "cpp",
         "memory": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "typeinfo": "cpp"
     }
 }
