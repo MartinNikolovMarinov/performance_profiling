@@ -245,7 +245,11 @@ i32 main(i32 argc, const char** argv) {
 
     core::ArrList<char> inputJSON;
     {
-        TIME_BLOCK("Reading the JSON input");
+        core::FileStat s;
+        core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), s));
+
+        THROUGHPUT_BLOCK("Reading the JSON input", s.size);
+
         core::ArrList<u8> inputJSONBytes;
         core::Expect(core::fileReadEntire(cmdArgs.inFileSb.view().data(), inputJSONBytes));
         core::convArrList(inputJSON, std::move(inputJSONBytes));
@@ -253,16 +257,21 @@ i32 main(i32 argc, const char** argv) {
 
     core::ArrList<f64> answers;
     {
-        TIME_BLOCK("Reading the reference answer file");
+        core::FileStat s;
+        core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), s));
+
+        THROUGHPUT_BLOCK("Reading the reference answer file", s.size);
+
         core::ArrList<u8> answersBin;
         core::Expect(core::fileReadEntire(cmdArgs.answersFileSb.view().data(), answersBin));
         core::convArrList(answers, std::move(answersBin));
 
-        for (addr_size i = 0; i < answers.len(); i++) {
-            if (core::getLogLevel() <= core::LogLevel::L_TRACE) {
-                core::logDirectStd("Answer: ");
-                logDirectStdF64(answers[i]);
-                core::logDirectStd("\n");
+        // Log Trace the answers:
+        if (core::getLogLevel() <= core::LogLevel::L_TRACE) {
+            for (addr_size i = 0; i < answers.len(); i++) {
+                    core::logDirectStd("Answer: ");
+                    logDirectStdF64(answers[i]);
+                    core::logDirectStd("\n");
             }
         }
     }
@@ -272,10 +281,9 @@ i32 main(i32 argc, const char** argv) {
     core::StrBuilder<> keysb; // TODO: Make this a stack/slab allocator?
     addr_size i = 0;
     {
-        TIME_BLOCK("Parsing JSON");
+        THROUGHPUT_BLOCK("Parsing JSON", inputJSON.len());
         Panic(decoder.pushArr() == JSONDecoderState::HAS_MORE);
         while (true) {
-            TIME_BLOCK("Parsing JSON Element");
 
             Pair p = {};
             f64 number = 0;
@@ -315,7 +323,7 @@ i32 main(i32 argc, const char** argv) {
             p.__debugTraceLog();
 
             {
-                TIME_BLOCK("Haversine Calculation");
+                THROUGHPUT_BLOCK("Haversine Calculation", inputJSON.len());
 
                 f64 hd = referenceHaversine(p.x0, p.y0, p.x1, p.y1);
                 Panic(hd == answers[i], "Did not match expected answer.");
