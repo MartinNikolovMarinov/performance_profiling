@@ -12,8 +12,14 @@
             // "program": "${workspaceFolder}/build/haversine_generator",
             // "args": ["cluster", "12351234", "30000000"],
 
-            "program": "${workspaceFolder}/build/haversine_parser",
-            "args": ["${workspaceFolder}/build/pairs.json", "${workspaceFolder}/build/pairs.json.res"],
+            // "program": "${workspaceFolder}/build/haversine_parser",
+            // "args": ["${workspaceFolder}/build/pairs.json", "${workspaceFolder}/build/pairs.json.res"],
+
+            // "program": "${workspaceFolder}/build/repetition_testing",
+            // "args": ["${workspaceFolder}/build/pairs.json"],
+
+            "program": "${workspaceFolder}/build/sandbox",
+            "args": ["${workspaceFolder}/build/pairs.json"],
 
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",

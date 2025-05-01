@@ -16,6 +16,7 @@
         "algorithm": "cpp",
         "memory": "cpp",
         "numeric": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "sstream": "cpp"
     }
 }

@@ -269,9 +269,9 @@ i32 main(i32 argc, const char** argv) {
         // Log Trace the answers:
         if (core::getLogLevel() <= core::LogLevel::L_TRACE) {
             for (addr_size i = 0; i < answers.len(); i++) {
-                    core::logDirectStd("Answer: ");
-                    logDirectStdF64(answers[i]);
-                    core::logDirectStd("\n");
+                core::logDirectStd("Answer: ");
+                logDirectStdF64(answers[i]);
+                core::logDirectStd("\n");
             }
         }
     }

@@ -1,226 +1,328 @@
-#define _CRT_SECURE_NO_WARNINGS
+#include <core_init.h>
+#include <os_metrics.h>
+#include <utils.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <math.h>
-#include <string.h>
+PRAGMA_WARNING_SUPPRESS_ALL
 
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef double f64;
-#define U64Max UINT64_MAX
-
-static f64 Square(f64 A)
-{
-    f64 Result = (A*A);
-    return Result;
-}
-
-static f64 RadiansFromDegrees(f64 Degrees)
-{
-    f64 Result = 0.01745329251994329577 * Degrees;
-    return Result;
-}
-
-static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
-{
-
-    f64 lat1 = Y0;
-    f64 lat2 = Y1;
-    f64 lon1 = X0;
-    f64 lon2 = X1;
-
-    f64 dLat = RadiansFromDegrees(lat2 - lat1);
-    f64 dLon = RadiansFromDegrees(lon2 - lon1);
-    lat1 = RadiansFromDegrees(lat1);
-    lat2 = RadiansFromDegrees(lat2);
-
-    f64 a = Square(sin(dLat/2.0)) + cos(lat1)*cos(lat2)*Square(sin(dLon/2));
-    f64 c = 2.0*asin(sqrt(a));
-
-    f64 Result = EarthRadius * c;
-
-    return Result;
-}
-
-struct random_series
-{
-    u64 A, B, C, D;
+struct RepetitionTestResult {
+    u64 testCount;
+    u64 totalTime;
+    u64 maxTime;
+    u64 minTime;
 };
 
-static u64 RotateLeft(u64 V, int Shift)
-{
-    u64 Result = ((V << Shift) | (V >> (64-Shift)));
-    return Result;
-}
+struct RepetitionTester {
+    enum struct State : u8 {
+        Uninitialized,
+        Idle,
+        Testing,
+    };
 
-static u64 RandomU64(random_series *Series)
-{
-    u64 A = Series->A;
-    u64 B = Series->B;
-    u64 C = Series->C;
-    u64 D = Series->D;
+    State state = State::Uninitialized;
+    u64 startTime = 0;
+    u32 runForAtLeastNSeconds = 10;
+    u64 runForAtLeastTime = 0;
+    u64 currentTestTime = 0;
+    u64 CPUFrequency = 0;
 
-    u64 E = A - RotateLeft(B, 27);
+    i32 openBlockCount = 0;
+    i32 closeBlockCount = 0;
 
-    A = (B ^ RotateLeft(C, 17));
-    B = (C + D);
-    C = (D + E);
-    D = (E + A);
+    u64 targetProcessedBytes = 0;
+    u64 currentTestProcessedBytes = 0;
 
-    Series->A = A;
-    Series->B = B;
-    Series->C = C;
-    Series->D = D;
+    RepetitionTestResult result = {};
 
-    return D;
-}
+    void startTestWave(u64 bytesToProcess, u32 runForAtLeastNSeconds = 10) {
+        auto currCPUFreq = core::getCPUFrequencyHz();
 
-static random_series Seed(u64 Value)
-{
-    random_series Series = {};
-
-    // NOTE(casey): This is the seed pattern for JSF generators, as per the original post
-    Series.A = 0xf1ea5eed;
-    Series.B = Value;
-    Series.C = Value;
-    Series.D = Value;
-
-    u32 Count = 20;
-    while(Count--)
-    {
-        RandomU64(&Series);
-    }
-
-    return Series;
-}
-
-static f64 RandomInRange(random_series *Series, f64 Min, f64 Max)
-{
-    f64 t = (f64)RandomU64(Series) / (f64)U64Max;
-    f64 Result = (1.0 - t)*Min + t*Max;
-
-    return Result;
-}
-
-static FILE *Open(long long unsigned PairCount, char const *Label, char const *Extension)
-{
-    char Temp[256];
-    sprintf(Temp, "data_%llu_%s.%s", PairCount, Label, Extension);
-    FILE *Result = fopen(Temp, "wb");
-    if(!Result)
-    {
-        fprintf(stderr, "Unable to open \"%s\" for writing.\n", Temp);
-    }
-
-    return Result;
-}
-
-static f64 RandomDegree(random_series *Series, f64 Center, f64 Radius, f64 MaxAllowed)
-{
-    f64 MinVal = Center - Radius;
-    if(MinVal < -MaxAllowed)
-    {
-        MinVal = -MaxAllowed;
-    }
-
-    f64 MaxVal = Center + Radius;
-    if(MaxVal > MaxAllowed)
-    {
-        MaxVal = MaxAllowed;
-    }
-
-    f64 Result = RandomInRange(Series, MinVal, MaxVal);
-    return Result;
-}
-
-int main(int ArgCount, char **Args)
-{
-    if(ArgCount == 4)
-    {
-        u64 ClusterCountLeft = U64Max;
-        f64 MaxAllowedX = 180;
-        f64 MaxAllowedY = 90;
-
-        f64 XCenter = 0;
-        f64 YCenter = 0;
-        f64 XRadius = MaxAllowedX;
-        f64 YRadius = MaxAllowedY;
-
-        char const *MethodName = Args[1];
-        if(strcmp(MethodName, "cluster") == 0)
-        {
-            ClusterCountLeft = 0;
+        if (state == State::Uninitialized) {
+            this->CPUFrequency = currCPUFreq;
+            this->targetProcessedBytes = bytesToProcess;
+            result.minTime = core::limitMax<u64>();
+            state = State::Testing;
         }
-        else if(strcmp(MethodName, "uniform") != 0)
-        {
-            MethodName = "uniform";
-            fprintf(stderr, "WARNING: Unrecognized method name. Using 'uniform'.\n");
+        else if (state == State::Idle) {
+            constexpr u64 CPU_FREQUENCY_EPSILON = 1000;
+            Panic(this->targetProcessedBytes == bytesToProcess, "Bytes to process should be the same for each test wave!");
+            Panic(this->CPUFrequency - currCPUFreq > CPU_FREQUENCY_EPSILON,
+                "CPU frequency changed during test wave!");
+            state = State::Testing;
         }
 
-        u64 SeedValue = atoll(Args[2]);
-        random_series Series = Seed(SeedValue);
+        runForAtLeastTime = u64(runForAtLeastNSeconds) * currCPUFreq;
+        startTime = core::getPerfCounter();
+    }
 
-        u64 MaxPairCount = (1ULL << 34);
-        u64 PairCount = atoll(Args[3]);
-        if(PairCount < MaxPairCount)
-        {
-            u64 ClusterCountMax = 1 + (PairCount / 64);
+    bool isTesting() {
+        Panic(u8(state) > u8(State::Uninitialized), "Repetition tester must be initialized. Call startTestWave first.");
+        if (state != State::Testing) return false;
 
-            FILE *FlexJSON = Open(PairCount, "flex", "json");
-            FILE *HaverAnswers = Open(PairCount, "haveranswer", "f64");
-            if(FlexJSON && HaverAnswers)
-            {
-                fprintf(FlexJSON, "{\"pairs\":[\n");
-                f64 Sum = 0;
-                f64 SumCoef = 1.0 / (f64)PairCount;
-                for(u64 PairIndex = 0; PairIndex < PairCount; ++PairIndex)
-                {
-                    if(ClusterCountLeft-- == 0)
-                    {
-                        ClusterCountLeft = ClusterCountMax;
-                        XCenter = RandomInRange(&Series, -MaxAllowedX, MaxAllowedX);
-                        YCenter = RandomInRange(&Series, -MaxAllowedY, MaxAllowedY);
-                        XRadius = RandomInRange(&Series, 0, MaxAllowedX);
-                        YRadius = RandomInRange(&Series, 0, MaxAllowedY);
-                    }
+        u64 currentTime = core::getPerfCounter();
 
-                    f64 X0 = RandomDegree(&Series, XCenter, XRadius, MaxAllowedX);
-                    f64 Y0 = RandomDegree(&Series, YCenter, YRadius, MaxAllowedY);
-                    f64 X1 = RandomDegree(&Series, XCenter, XRadius, MaxAllowedX);
-                    f64 Y1 = RandomDegree(&Series, YCenter, YRadius, MaxAllowedY);
+        if (openBlockCount > 0) {
+            Panic(openBlockCount == closeBlockCount, "Unbalanced begin/end");
+            Assert(currentTestProcessedBytes == targetProcessedBytes, "Processed byte count missmatch. Algorithm bug!");
 
-                    f64 EarthRadius = 6372.8;
-                    f64 HaversineDistance = ReferenceHaversine(X0, Y0, X1, Y1, EarthRadius);
-
-                    Sum += SumCoef*HaversineDistance;
-
-                    char const *JSONSep = (PairIndex == (PairCount - 1)) ? "\n" : ",\n";
-                    fprintf(FlexJSON, "    {\"x0\":%.16f, \"y0\":%.16f, \"x1\":%.16f, \"y1\":%.16f}%s", X0, Y0, X1, Y1, JSONSep);
-
-                    fwrite(&HaversineDistance, sizeof(HaversineDistance), 1, HaverAnswers);
-                }
-                fprintf(FlexJSON, "]}\n");
-                fwrite(&Sum, sizeof(Sum), 1, HaverAnswers);
-
-                fprintf(stdout, "Method: %s\n", MethodName);
-                fprintf(stdout, "Random seed: %llu\n", SeedValue);
-                fprintf(stdout, "Pair count: %llu\n", PairCount);
-                fprintf(stdout, "Expected sum: %.16f\n", Sum);
+            u64 elapsedTime = currentTestTime;
+            result.testCount += 1;
+            result.totalTime += elapsedTime;
+            if (result.maxTime < elapsedTime) {
+                result.maxTime = elapsedTime;
             }
 
-            if(FlexJSON) fclose(FlexJSON);
-            if(HaverAnswers) fclose(HaverAnswers);
+            if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+                logDebug("Current Min and Max:");
+                printTimeWithBandwith("\tMin", result.minTime, CPUFrequency, targetProcessedBytes);
+                core::logDirectStd("\n");
+                printTimeWithBandwith("\tMax", result.maxTime, CPUFrequency, targetProcessedBytes);
+                core::logDirectStd("\n");
+                printTime("\tTime left:", runForAtLeastTime - (currentTime - startTime), CPUFrequency);
+                core::logDirectStd("\n");
+            }
+
+            if (result.minTime > elapsedTime) {
+                // NOTE: If we find a new best, start iterating again:
+                result.minTime = elapsedTime;
+                startTime = currentTime;
+            }
+
+            // Clear state for next repetition:
+            openBlockCount = 0;
+            closeBlockCount = 0;
+            currentTestTime = 0;
+            currentTestProcessedBytes = 0;
         }
-        else
-        {
-            fprintf(stderr, "To avoid accidentally generating massive files, number of pairs must be less than %llu.\n", MaxPairCount);
+
+        if (currentTime - startTime > runForAtLeastTime) {
+            state = State::Idle;
+        }
+
+        return true;
+    }
+
+    void begin() {
+        openBlockCount++;
+        currentTestTime -= core::getPerfCounter();
+    }
+
+    void end() {
+        closeBlockCount++;
+        currentTestTime += core::getPerfCounter();
+    }
+
+    void countProcessedBytes(u64 processed) {
+        currentTestProcessedBytes += processed;
+    }
+
+    void printTestWaveResults() {
+        printTimeWithBandwith("Min", result.minTime, CPUFrequency, targetProcessedBytes);
+        core::logDirectStd("\n");
+
+        printTimeWithBandwith("Max", result.maxTime, CPUFrequency, targetProcessedBytes);
+        core::logDirectStd("\n");
+
+        if (result.testCount > 0) {
+            printTimeWithBandwith("Avg",
+                      f64(result.totalTime) / f64(result.testCount),
+                      CPUFrequency,
+                      targetProcessedBytes);
+            core::logDirectStd("\n");
         }
     }
-    else
+};
+
+// ------------------------------------------------ Specific test cases ------------------------------------------------
+
+struct InputArgs {
+    core::StrView fname;
+    void* buffer;
+    addr_size bufferSize;
+};
+
+using TestFunction = void(*)(RepetitionTester& tester, const InputArgs& args);
+
+struct TestCase {
+    core::StrView label;
+    TestFunction fn;
+    InputArgs args;
+};
+
+void readFrontToBack_fread(RepetitionTester& tester, const InputArgs& args) {
+    while(tester.isTesting()) {
+        void* allocated = nullptr;
+        if (!args.buffer) {
+            allocated = defaultAlloc<void>(args.bufferSize);
+            Panic(allocated, "Failed to allocated buffer!");
+        }
+        defer { if(allocated) defaultFree(allocated, args.bufferSize); };
+
+        FILE* file = fopen(args.fname.data(), "rb");
+        Assert(file, "fread failed");
+
+        tester.begin();
+        void* pickedBuffer = allocated ? allocated : args.buffer;
+        auto result = fread(pickedBuffer, args.bufferSize, 1, file);
+        tester.end();
+
+        Assert(result == 1, "fread failed");
+
+        tester.countProcessedBytes(args.bufferSize);
+
+        fclose(file);
+    }
+}
+
+#if OS_WIN == 1
+  #include <io.h>        // _open, _read, _close
+  #include <fcntl.h>     // _O_BINARY, _O_RDONLY
+  #define  OPEN_FN  _open
+  #define  READ_FN  _read
+  #define  CLOSE_FN _close
+#else
+  #include <fcntl.h>     // open
+  #include <unistd.h>    // read, close
+  #define  OPEN_FN  open
+  #define  READ_FN  read
+  #define  CLOSE_FN close
+#endif
+
+void readFrontToBack_read(RepetitionTester& tester, const InputArgs& args)
+{
+    while (tester.isTesting()) {
+        void* allocated = nullptr;
+        if (!args.buffer) {
+            allocated = defaultAlloc<void>(args.bufferSize);
+            Panic(allocated, "Failed to allocated buffer!");
+        }
+        defer { if(allocated) defaultFree(allocated, args.bufferSize); };
+
+        /* open file unbuffered / binary */
+        int fd = OPEN_FN(args.fname.data(),
+#if OS_WIN == 1
+                         _O_RDONLY | _O_BINARY);
+#else
+                         O_RDONLY);
+#endif
+        Panic(fd != -1, "open failed");
+
+        /* time the raw read() / _read() */
+        tester.begin();
+        addr_size totalRead = 0;
+        void* pickedBuffer = allocated ? allocated : args.buffer;
+        while (totalRead < args.bufferSize) {
+            addr_size chunk = args.bufferSize - totalRead;
+            auto n = READ_FN(fd,
+                             static_cast<char*>(pickedBuffer) + totalRead,
+#if OS_WIN == 1
+                             static_cast<unsigned int>(chunk)
+#else
+                             chunk
+#endif
+            );
+            Panic(n >= 0, "read failed");
+
+            tester.countProcessedBytes(n);
+
+            if (n == 0) break; /* EOF */
+        }
+        tester.end();
+
+        CLOSE_FN(fd);
+    }
+}
+
+struct CommandLineArguments {
+    core::StrBuilder<> inFileSb;
+};
+
+void printUsage() {
+    core::logDirectStd("Usage: ./haversine [input file]\n");
+    core::logDirectStd("Options:\n");
+    core::logDirectStd("  --help: Print this help message\n");
+}
+
+void parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdArgs) {
+    core::CmdFlagParser flagParser;
+
+    Expect(
+        flagParser.parse(addr_size(argc), argv),
+        "Failed to parse command line arguments!"
+    );
+
+    if (flagParser.argumentCount() < 1) {
+        printUsage();
+        Panic(false, "Invalid number of arguments!");
+    }
+
+    bool argsOk = true;
+
+    flagParser.arguments([&argsOk, &cmdArgs](core::StrView arg, addr_size idx) {
+        switch (idx)
+        {
+            case 0:
+                cmdArgs.inFileSb = core::StrBuilder<>(arg);
+                break;
+
+            default:
+                argsOk = false;
+                return false;
+        }
+
+        return true;
+    });
+
+    Panic(argsOk, "Invalid input arguments!");
+}
+
+i32 main(i32 argc, const char** argv) {
+    coreInit();
+
+    // core::setLoggerLevel(core::LogLevel::L_DEBUG);
+
+    CommandLineArguments cmdArgs{};
+    parserCmdArguments(argc, argv, cmdArgs);
+
+    addr_size fileSize = 0;
     {
-        fprintf(stderr, "Usage: %s [uniform/cluster] [random seed] [number of coordinate pairs to generate]\n", Args[0]);
+        core::FileStat stat;
+        core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), stat), "Failed to stat the input file.");
+        fileSize = stat.size;
+    }
+
+    void* preallocatedBuffer = defaultAlloc<void>(fileSize);
+    Panic(preallocatedBuffer, "Failed to preallocate buffer!");
+    defer { defaultFree(preallocatedBuffer, fileSize); };
+
+    RepetitionTester tester;
+    TestCase cases[] = {
+        {
+            "Read pattern: front-to-back, Memory: Preallocated, Function used: fread"_sv,
+            readFrontToBack_fread,
+            InputArgs { cmdArgs.inFileSb.view(), preallocatedBuffer, fileSize },
+        },
+        {
+            "Read pattern: front-to-back, Memory: Allocated rer each, Function used: fread"_sv,
+            readFrontToBack_fread,
+            InputArgs { cmdArgs.inFileSb.view(), nullptr, fileSize },
+        },
+        {
+            "Read pattern: front-to-back, Memory: Preallocated, Function used: read"_sv,
+            readFrontToBack_read,
+            InputArgs { cmdArgs.inFileSb.view(), preallocatedBuffer, fileSize },
+        },
+        {
+            "Read pattern: front-to-back, Memory: Preallocated, Function used: read"_sv,
+            readFrontToBack_read,
+            InputArgs { cmdArgs.inFileSb.view(), nullptr, fileSize },
+        },
+    };
+
+    for (const auto& c : cases) {
+        logInfo("---- %s ----", c.label.data());
+        tester.startTestWave(fileSize);
+        c.fn(tester, c.args);
+        tester.printTestWaveResults();
     }
 
     return 0;
