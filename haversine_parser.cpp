@@ -191,7 +191,7 @@ struct CommandLineArguments {
 };
 
 void printUsage() {
-    core::logDirectStd("Usage: ./haversine [input.json] [expected answer]\n");
+    core::logDirectStd("Usage: ./haversine_parser [input.json] [expected answer]\n");
     core::logDirectStd("Options:\n");
     core::logDirectStd("  --help: Print this help message\n");
 }

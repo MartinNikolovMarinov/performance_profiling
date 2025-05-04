@@ -18,8 +18,11 @@
             // "program": "${workspaceFolder}/build/repetition_testing",
             // "args": ["${workspaceFolder}/build/pairs.json"],
 
-            "program": "${workspaceFolder}/build/sandbox",
-            "args": ["${workspaceFolder}/build/pairs.json"],
+            "program": "${workspaceFolder}/build/page_fault_probing",
+            "args": ["5"],
+
+            // "program": "${workspaceFolder}/build/sandbox",
+            // "args": ["${workspaceFolder}/build/pairs.json"],
 
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",

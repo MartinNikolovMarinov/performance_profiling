@@ -4,6 +4,7 @@ project(STL_VIEWER VERSION 0.1.0 LANGUAGES CXX)
 set(haversine_generator_target haversine_generator)
 set(haversine_parser_target haversine_parser)
 set(repetition_testing_target repetition_testing)
+set(page_fault_probing_target page_fault_probing)
 set(sandbox_target sandbox)
 
 # Standard Requirements:
@@ -66,20 +67,19 @@ set(haversine_parser_src haversine_parser.cpp src/haversine_distance.cpp ${commo
 
 set(repetition_testing_src repetition_testing.cpp ${common_src})
 
+set(page_fault_probing_src page_fault_probing.cpp ${common_src})
+
 set(sandbox_src sandbox.cpp ${common_src})
 
 if(OS STREQUAL "windows")
-    set(sandbox_src ${sandbox_src}
-        src/win_os_metrics.cpp
-    )
+    set(sandbox_src ${sandbox_src} src/win_os_metrics.cpp)
+    set(page_fault_probing_src ${page_fault_probing_src} src/win_os_metrics.cpp)
 elseif(OS STREQUAL "darwin")
-    set(sandbox_src ${sandbox_src}
-        src/unix_os_metrics.cpp
-    )
+    set(sandbox_src ${sandbox_src} src/unix_os_metrics.cpp)
+    set(page_fault_probing_src ${page_fault_probing_src} src/unix_os_metrics.cpp)
 elseif(OS STREQUAL "linux")
-    set(sandbox_src ${sandbox_src}
-        src/unix_os_metrics.cpp
-    )
+    set(sandbox_src ${sandbox_src} src/unix_os_metrics.cpp)
+    set(page_fault_probing_src ${page_fault_probing_src} src/unix_os_metrics.cpp)
 else()
     message(FATAL_ERROR "Unsupported OS: ${CMAKE_SYSTEM_NAME}!")
 endif()
@@ -116,6 +116,7 @@ endfunction()
 create_exe("${haversine_generator_target}" "${haversine_generator_src}")
 create_exe("${haversine_parser_target}" "${haversine_parser_src}")
 create_exe("${repetition_testing_target}" "${repetition_testing_src}")
+create_exe("${page_fault_probing_target}" "${page_fault_probing_src}")
 create_exe("${sandbox_target}" "${sandbox_src}")
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------

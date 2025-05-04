@@ -1,12 +1,8 @@
 #include <core_init.h>
+#include <os_metrics.h>
+#include <utils.h>
 
-#include <stdio.h>
-
-enum struct TestMode : u8 {
-    Uninitialized,
-    Testing,
-    Completed
-};
+PRAGMA_WARNING_SUPPRESS_ALL
 
 struct RepetitionTestResult {
     u64 testCount;
@@ -16,139 +12,162 @@ struct RepetitionTestResult {
 };
 
 struct RepetitionTester {
-    u64 targetProcessedByteCount;
-    u64 CPUTimerFreq;
-    u64 tryForTime;
-    u64 testsStartAt;
+    enum struct State : u8 {
+        Uninitialized,
+        Idle,
+        Testing,
+    };
 
-    TestMode mode;
-    u32 openBlockCount;
-    u32 closeBlockCount;
-    u64 timeAccumulateOnThisTest;
-    u64 byteAccumulateOnThisTest;
+    State state = State::Uninitialized;
+    u64 startTime = 0;
+    u32 runForAtLeastNSeconds = 10;
+    u64 runForAtLeastTime = 0;
+    u64 currentTestTime = 0;
+    u64 CPUFrequency = 0;
 
-    RepetitionTestResult result;
+    i32 openBlockCount = 0;
+    i32 closeBlockCount = 0;
 
-    void newTestWave(u64 _targetProcessedByteCount, u64 _CPUTimerFreq, u32 secondsToTry = 10) {
-        if (mode == TestMode::Uninitialized) {
-            mode = TestMode::Testing;
-            this->targetProcessedByteCount = _targetProcessedByteCount;
-            CPUTimerFreq = _CPUTimerFreq;
-            result.minTime = u64(-1);
+    u64 targetProcessedBytes = 0;
+    u64 currentTestProcessedBytes = 0;
+
+    RepetitionTestResult result = {};
+
+    void startTestWave(u64 bytesToProcess, u32 runForAtLeastNSeconds = 10) {
+        auto currCPUFreq = core::getCPUFrequencyHz();
+
+        if (state == State::Uninitialized) {
+            this->CPUFrequency = currCPUFreq;
+            this->targetProcessedBytes = bytesToProcess;
+            result.minTime = core::limitMax<u64>();
+            state = State::Testing;
         }
-        else if (mode == TestMode::Completed) {
-            mode = TestMode::Testing;
-
-            Assert(this->targetProcessedByteCount != _targetProcessedByteCount, "targetProcessedByteCount changed");
-            Assert(CPUTimerFreq != _CPUTimerFreq, "CPU frequency changed");
+        else if (state == State::Idle) {
+            constexpr u64 CPU_FREQUENCY_EPSILON = 1000;
+            Panic(this->targetProcessedBytes == bytesToProcess, "Bytes to process should be the same for each test wave!");
+            Panic(this->CPUFrequency - currCPUFreq > CPU_FREQUENCY_EPSILON,
+                "CPU frequency changed during test wave!");
+            state = State::Testing;
         }
 
-        tryForTime = secondsToTry*_CPUTimerFreq;
-        testsStartAt = core::getPerfCounter();
-    }
-
-    void beginTime() {
-        openBlockCount++;
-        timeAccumulateOnThisTest -= core::getPerfCounter();
-    }
-
-    void endTime() {
-        closeBlockCount++;
-        timeAccumulateOnThisTest += core::getPerfCounter();
-    }
-
-    void countBytes(u64 byteCount) {
-        byteAccumulateOnThisTest += byteCount;
+        runForAtLeastTime = u64(runForAtLeastNSeconds) * currCPUFreq;
+        startTime = core::getPerfCounter();
     }
 
     bool isTesting() {
-        if (mode != TestMode::Testing) {
-            return false;
-        }
+        Panic(u8(state) > u8(State::Uninitialized), "Repetition tester must be initialized. Call startTestWave first.");
+        if (state != State::Testing) return false;
 
         u64 currentTime = core::getPerfCounter();
 
         if (openBlockCount > 0) {
-            Assert(openBlockCount == closeBlockCount, "Unbalanced BeginTime/EndTime");
-            Assert(byteAccumulateOnThisTest == targetProcessedByteCount, "Processed byte count missmatch");
+            Panic(openBlockCount == closeBlockCount, "Unbalanced begin/end");
+            Assert(currentTestProcessedBytes == targetProcessedBytes, "Processed byte count missmatch. Algorithm bug!");
 
-            u64 elapsedTime = timeAccumulateOnThisTest;
+            u64 elapsedTime = currentTestTime;
             result.testCount += 1;
             result.totalTime += elapsedTime;
             if (result.maxTime < elapsedTime) {
                 result.maxTime = elapsedTime;
             }
 
-            if (result.minTime > elapsedTime) {
-                result.minTime = elapsedTime;
-
-                testsStartAt = currentTime;
+            if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+                logDebug("Current Min and Max:");
+                printTimeWithBandwith("\tMin", result.minTime, CPUFrequency, targetProcessedBytes);
+                core::logDirectStd("\n");
+                printTimeWithBandwith("\tMax", result.maxTime, CPUFrequency, targetProcessedBytes);
+                core::logDirectStd("\n");
+                printTime("\tTime left:", runForAtLeastTime - (currentTime - startTime), CPUFrequency);
+                core::logDirectStd("\n");
             }
 
+            if (result.minTime > elapsedTime) {
+                // NOTE: If we find a new best, start iterating again:
+                result.minTime = elapsedTime;
+                startTime = currentTime;
+            }
+
+            // Clear state for next repetition:
             openBlockCount = 0;
             closeBlockCount = 0;
-            timeAccumulateOnThisTest = 0;
-            byteAccumulateOnThisTest = 0;
+            currentTestTime = 0;
+            currentTestProcessedBytes = 0;
         }
 
-        if (currentTime - testsStartAt > tryForTime) {
-            mode = TestMode::Completed;
-            core::logDirectStd("                                                                                   \n");
-            printTestWaveResults();
+        if (currentTime - startTime > runForAtLeastTime) {
+            state = State::Idle;
         }
 
         return true;
     }
 
-    static void printTimeWithBandwith(const char* label, f64 CPUTime, u64 _CPUTimerFreq, u64 byteCount) {
-        core::logDirectStd("%s: %.0f", label, CPUTime);
-        if (_CPUTimerFreq > 0) {
-            f64 seconds = CPUTime / f64(_CPUTimerFreq);
-            core::logDirectStd(" (%fms)", 1000.0 * seconds);
-
-            if (byteCount > 0) {
-                f64 bestBandwidth = f64(byteCount) / (f64(core::CORE_GIGABYTE) * seconds);
-                core::logDirectStd(" %fgb/s", bestBandwidth);
-            }
-        }
+    void begin() {
+        openBlockCount++;
+        currentTestTime -= core::getPerfCounter();
     }
 
-    static void printTimeWithBandwith(const char* label, u64 CPUTime, u64 _CPUTimerFreq, u64 byteCount) {
-        printTimeWithBandwith(label, f64(CPUTime), _CPUTimerFreq, byteCount);
+    void end() {
+        closeBlockCount++;
+        currentTestTime += core::getPerfCounter();
+    }
+
+    void countProcessedBytes(u64 processed) {
+        currentTestProcessedBytes += processed;
     }
 
     void printTestWaveResults() {
-        printTimeWithBandwith("Min", result.minTime, CPUTimerFreq, targetProcessedByteCount);
+        printTimeWithBandwith("Min", result.minTime, CPUFrequency, targetProcessedBytes);
         core::logDirectStd("\n");
 
-        printTimeWithBandwith("Max", result.maxTime, CPUTimerFreq, targetProcessedByteCount);
+        printTimeWithBandwith("Max", result.maxTime, CPUFrequency, targetProcessedBytes);
         core::logDirectStd("\n");
 
         if (result.testCount > 0) {
-            printTimeWithBandwith("Avg", f64(result.totalTime) / f64(result.testCount), CPUTimerFreq, targetProcessedByteCount);
+            printTimeWithBandwith("Avg",
+                      f64(result.totalTime) / f64(result.testCount),
+                      CPUFrequency,
+                      targetProcessedBytes);
             core::logDirectStd("\n");
         }
     }
 };
 
-struct ReadParams {
-    void* data;
-    addr_size dataSize;
-    core::StrBuilder<> fileName;
+// ------------------------------------------------ Specific test cases ------------------------------------------------
+
+struct InputArgs {
+    core::StrView fname;
+    void* buffer;
+    addr_size bufferSize;
 };
 
-void testFRead(RepetitionTester& tester, ReadParams& params) {
+using TestFunction = void(*)(RepetitionTester& tester, const InputArgs& args);
+
+struct TestCase {
+    core::StrView label;
+    TestFunction fn;
+    InputArgs args;
+};
+
+void readFrontToBack_fread(RepetitionTester& tester, const InputArgs& args) {
     while(tester.isTesting()) {
-        FILE* file = fopen(params.fileName.view().data(), "rb");
+        void* allocated = nullptr;
+        if (!args.buffer) {
+            allocated = defaultAlloc<void>(args.bufferSize);
+            Panic(allocated, "Failed to allocated buffer!");
+        }
+        defer { if(allocated) defaultFree(allocated, args.bufferSize); };
+
+        FILE* file = fopen(args.fname.data(), "rb");
         Assert(file, "fread failed");
 
-        tester.beginTime();
-        auto result = fread(params.data, params.dataSize, 1, file);
-        tester.endTime();
+        tester.begin();
+        void* pickedBuffer = allocated ? allocated : args.buffer;
+        auto result = fread(pickedBuffer, args.bufferSize, 1, file);
+        tester.end();
 
         Assert(result == 1, "fread failed");
 
-        tester.countBytes(params.dataSize);
+        tester.countProcessedBytes(args.bufferSize);
 
         fclose(file);
     }
@@ -160,51 +179,54 @@ void testFRead(RepetitionTester& tester, ReadParams& params) {
   #define  OPEN_FN  _open
   #define  READ_FN  _read
   #define  CLOSE_FN _close
-  #define  PATH_CSTR(path)  (path)           // already narrow
 #else
   #include <fcntl.h>     // open
   #include <unistd.h>    // read, close
   #define  OPEN_FN  open
   #define  READ_FN  read
   #define  CLOSE_FN close
-  #define  PATH_CSTR(path)  (path)
 #endif
 
-void testRead(RepetitionTester& tester, ReadParams& params)
+void readFrontToBack_read(RepetitionTester& tester, const InputArgs& args)
 {
     while (tester.isTesting()) {
+        void* allocated = nullptr;
+        if (!args.buffer) {
+            allocated = defaultAlloc<void>(args.bufferSize);
+            Panic(allocated, "Failed to allocated buffer!");
+        }
+        defer { if(allocated) defaultFree(allocated, args.bufferSize); };
 
         /* open file unbuffered / binary */
-        int fd = OPEN_FN(PATH_CSTR(params.fileName.view().data()),
+        int fd = OPEN_FN(args.fname.data(),
 #if OS_WIN == 1
                          _O_RDONLY | _O_BINARY);
 #else
                          O_RDONLY);
 #endif
-        Assert(fd != -1, "open failed");
+        Panic(fd != -1, "open failed");
 
         /* time the raw read() / _read() */
-        tester.beginTime();
+        tester.begin();
         addr_size totalRead = 0;
-        while (totalRead < params.dataSize) {
-            addr_size chunk = params.dataSize - totalRead;
+        void* pickedBuffer = allocated ? allocated : args.buffer;
+        while (totalRead < args.bufferSize) {
+            addr_size chunk = args.bufferSize - totalRead;
             auto n = READ_FN(fd,
-                             static_cast<char*>(params.data) + totalRead,
+                             static_cast<char*>(pickedBuffer) + totalRead,
 #if OS_WIN == 1
                              static_cast<unsigned int>(chunk)
 #else
                              chunk
 #endif
             );
-            Assert(n >= 0, "read failed");
-            totalRead += static_cast<addr_size>(n);
+            Panic(n >= 0, "read failed");
+
+            tester.countProcessedBytes(n);
+
             if (n == 0) break; /* EOF */
         }
-        tester.endTime();
-
-        Assert(totalRead == params.dataSize, "read size mismatch");
-
-        tester.countBytes(params.dataSize);
+        tester.end();
 
         CLOSE_FN(fd);
     }
@@ -215,7 +237,7 @@ struct CommandLineArguments {
 };
 
 void printUsage() {
-    core::logDirectStd("Usage: ./haversine [input file]\n");
+    core::logDirectStd("Usage: ./repetition_testing [input file]\n");
     core::logDirectStd("Options:\n");
     core::logDirectStd("  --help: Print this help message\n");
 }
@@ -261,38 +283,47 @@ i32 main(i32 argc, const char** argv) {
     CommandLineArguments cmdArgs{};
     parserCmdArguments(argc, argv, cmdArgs);
 
-    ReadParams readParams = {};
+    addr_size fileSize = 0;
     {
-        core::FileStat s;
-        core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), s));
-        Panic(s.size != 0, "Picked files should have size greater than 0.");
-
-        readParams.data = reinterpret_cast<void*>(defaultAlloc<char>(s.size));
-        readParams.dataSize = s.size;
-        readParams.fileName = std::move(cmdArgs.inFileSb);
+        core::FileStat stat;
+        core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), stat), "Failed to stat the input file.");
+        fileSize = stat.size;
     }
-    defer { defaultFree(readParams.data, readParams.dataSize); };
 
-    struct TestCase {
-        const char* fnName;
-        void(*fn)(RepetitionTester& tester, ReadParams& params);
+    void* preallocatedBuffer = defaultAlloc<void>(fileSize);
+    Panic(preallocatedBuffer, "Failed to preallocate buffer!");
+    defer { defaultFree(preallocatedBuffer, fileSize); };
+
+    RepetitionTester tester;
+    TestCase cases[] = {
+        {
+            "Read pattern: front-to-back, Memory: Preallocated, Function used: fread"_sv,
+            readFrontToBack_fread,
+            InputArgs { cmdArgs.inFileSb.view(), preallocatedBuffer, fileSize },
+        },
+        {
+            "Read pattern: front-to-back, Memory: Allocated rer each, Function used: fread"_sv,
+            readFrontToBack_fread,
+            InputArgs { cmdArgs.inFileSb.view(), nullptr, fileSize },
+        },
+        {
+            "Read pattern: front-to-back, Memory: Preallocated, Function used: read"_sv,
+            readFrontToBack_read,
+            InputArgs { cmdArgs.inFileSb.view(), preallocatedBuffer, fileSize },
+        },
+        {
+            "Read pattern: front-to-back, Memory: Preallocated, Function used: read"_sv,
+            readFrontToBack_read,
+            InputArgs { cmdArgs.inFileSb.view(), nullptr, fileSize },
+        },
     };
 
-    auto CPUTimerFreq = core::getCPUFrequencyHz();
-    TestCase testedFunctions[2] = {
-        { "fread", testFRead },
-        { "read", testRead },
-    };
-
-    for (u32 i = 0; i < CORE_C_ARRLEN(testedFunctions); i++) {
-        RepetitionTester tester = {};
-        auto t = testedFunctions[i];
-
-        core::logDirectStd("\n--- %s ---\n", t.fnName);
-        tester.newTestWave(readParams.dataSize, CPUTimerFreq, 15);
-        t.fn(tester, readParams);
+    for (const auto& c : cases) {
+        logInfo("---- %s ----", c.label.data());
+        tester.startTestWave(fileSize);
+        c.fn(tester, c.args);
+        tester.printTestWaveResults();
     }
 
     return 0;
 }
-

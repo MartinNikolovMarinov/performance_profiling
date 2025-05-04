@@ -141,6 +141,8 @@ struct CommandLineArguments {
 
 void printUsage() {
     core::logDirectStd("Usage: ./haversine_generator <uniform/cluster> <random seed> <number of coordinate pairs to generate> [filepath]\n");
+    core::logDirectStd("Options:\n");
+    core::logDirectStd("  --help: Print this help message\n");
 }
 
 CommandLineArguments parseCmdArguments(i32 argc, const char** argv) {
