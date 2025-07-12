@@ -12,7 +12,7 @@ struct Pair {
 };
 
 void generateRandomUniformPairs(Pair* pairs, f64* results, addr_size pCount) {
-    logInfo("Generating %zu random uniform pairs", pCount);
+    logInfo("Generating {} random uniform pairs", pCount);
 
     f64 sum = 0;
     f64 sumCoef = 1.0 / f64(pCount);
@@ -47,7 +47,7 @@ void generateRandomClusteredPairs(Pair* pairs, f64* results, addr_size pCount) {
     f64 sum = 0;
     f64 sumCoef = 1.0 / f64(pCount);
 
-    logTrace("Generating %zu random clustered pairs", pCount);
+    logTrace("Generating {} random clustered pairs", pCount);
 
     constexpr u32 CLUSTER_COUNT = 64;
     struct Cluster { f64 x, y, r; };
@@ -65,7 +65,7 @@ void generateRandomClusteredPairs(Pair* pairs, f64* results, addr_size pCount) {
         clusters[i].y = core::rndF64(-90.0, 90.0);
         clusters[i].r = core::rndF64(10.0, 50.0);
 
-        logTrace("Cluster %u: (%.16f, %.16f) r=%.16f", i, clusters[i].x, clusters[i].y, clusters[i].r);
+        logTrace("Cluster {}: ({:f.16}, {:f.16}) r={:f.16}", i, clusters[i].x, clusters[i].y, clusters[i].r);
     }
 
     for (addr_size i = 0; i < pCount; i++) {
@@ -106,15 +106,15 @@ void toJson(core::StrBuilder<>& sb, const Pair pair) {
     char* start = buff;
     char* curr = buff;
 
-    curr = core::memcopy(curr, "{\"x0\":", core::cstrLen("{\"x0\":"));
+    curr += core::memcopy(curr, "{\"x0\":", core::cstrLen("{\"x0\":"));
     curr += core::Unpack(core::floatToCstr(pair.x0, curr, bufferMax));
-    curr = core::memcopy(curr, ", \"y0\":", core::cstrLen(", \"y0\":"));
+    curr += core::memcopy(curr, ", \"y0\":", core::cstrLen(", \"y0\":"));
     curr += core::Unpack(core::floatToCstr(pair.y0, curr, bufferMax));
-    curr = core::memcopy(curr, ", \"x1\":", core::cstrLen(", \"x1\":"));
+    curr += core::memcopy(curr, ", \"x1\":", core::cstrLen(", \"x1\":"));
     curr += core::Unpack(core::floatToCstr(pair.x1, curr, bufferMax));
-    curr = core::memcopy(curr, ", \"y1\":", core::cstrLen(", \"y1\":"));
+    curr += core::memcopy(curr, ", \"y1\":", core::cstrLen(", \"y1\":"));
     curr += core::Unpack(core::floatToCstr(pair.y1, curr, bufferMax));
-    curr = core::memcopy(curr, "}", core::cstrLen("}"));
+    curr += core::memcopy(curr, "}", core::cstrLen("}"));
 
     sb.append(buff, addr_size(curr - start));
 }
@@ -167,7 +167,7 @@ CommandLineArguments parseCmdArguments(i32 argc, const char** argv) {
                     cmdArgs.genMethod = RandomPairGenerationMethod::Clustered;
                 }
                 else {
-                    logErr("Error: '%s' is an invalid random pair generation method!\n\n", value.data());
+                    logErr("Error: '{}' is an invalid random pair generation method!\n\n", value.data());
                     printUsage();
                     argumentsAreValid = false;
                     return false;
@@ -226,8 +226,8 @@ i32 main(i32 argc, const char** argv) {
         defaultFree(results, cmdArgs.pairCount);
     };
 
-    logInfo("Random seed: %llu", cmdArgs.seed);
-    logInfo("Pair count: %llu", cmdArgs.pairCount);
+    logInfo("Random seed: {}", cmdArgs.seed);
+    logInfo("Pair count: {}", cmdArgs.pairCount);
 
     if (cmdArgs.genMethod == RandomPairGenerationMethod::Uniform) {
         logInfo("Method: uniform");
@@ -254,7 +254,7 @@ i32 main(i32 argc, const char** argv) {
     {
         core::StrBuilder pairsSb;
         toJson(pairsSb, pairs, pairCount);
-        logTrace("Pairs: \n%.*s\n", pairsSb.view().len(), pairsSb.view().data());
+        logTrace("Pairs: \n{}\n", pairsSb.view().len(), pairsSb.view().data());
         core::Expect(
             core::fileWriteEntire(outFileSb.view().data(),
                                   reinterpret_cast<const u8*>(pairsSb.view().data()),
@@ -262,7 +262,7 @@ i32 main(i32 argc, const char** argv) {
             "Failed to write pairs to file!"
         );
 
-        logInfo("Wrote Pairs To '%s'", outFileSb.view().data());
+        logInfo("Wrote Pairs To '{}'", outFileSb.view().data());
     }
 
     // Write The Distances For Each Pair
@@ -274,7 +274,7 @@ i32 main(i32 argc, const char** argv) {
             "Failed to write pairs to file!"
         );
 
-        logInfo("Wrote Results To '%s'", outReferenceResultFileSb.view().data());
+        logInfo("Wrote Results To '{}'", outReferenceResultFileSb.view().data());
     }
 
     // Read Distances Back To Verify

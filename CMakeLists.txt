@@ -59,7 +59,7 @@ log_info("---------------------------------------------")
 
 # ---------------------------------------- Begin Declare Source Files --------------------------------------------------
 
-set(common_src src/core_init.cpp src/utils.cpp)
+set(common_src src/core_init.cpp)
 
 set(haversine_generator_src haversine_generator.cpp src/haversine_distance.cpp ${common_src})
 
@@ -115,8 +115,6 @@ endfunction()
 
 create_exe("${haversine_generator_target}" "${haversine_generator_src}")
 create_exe("${haversine_parser_target}" "${haversine_parser_src}")
-create_exe("${repetition_testing_target}" "${repetition_testing_src}")
-create_exe("${page_fault_probing_target}" "${page_fault_probing_src}")
 create_exe("${sandbox_target}" "${sandbox_src}")
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------

@@ -339,7 +339,7 @@ i32 main(i32 argc, const char** argv) {
     }
 
     Panic(i == answers.len(), "Did not calculate the full range of values.");
-    logInfo("Successfully parsered and verified %d values", i);
+    logInfo("Successfully parsered and verified {} values", i);
 
     auto result = core::endProfile();
     core::logProfileResult(result, core::LogLevel::L_INFO);

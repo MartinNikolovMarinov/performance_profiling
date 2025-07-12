@@ -37,15 +37,14 @@ void assertHandler(const char* failedExpr, const char* file, i32 line, const cha
 
 
 void coreInit() {
-    core::initProgramCtx(assertHandler);
-
-    Panic(core::initLogger({}));
-    core::setLoggerLevel(core::LogLevel::L_INFO);
+    core::LoggerCreateInfo loggerInfo = core::LoggerCreateInfo::createDefault();
+    core::setLogLevel(core::LogLevel::L_INFO);
+    core::initProgramCtx(assertHandler, &loggerInfo);
 }
 
 void logDirectStdF64(f64 f) {
     constexpr addr_size buffLen = 32;
     char buff[buffLen] = {};
     u32 n = core::Unpack(core::floatToCstr(f, buff, buffLen));
-    core::logDirectStd("%.*s", n, buff);
+    core::logDirectStd("{}", core::sv(buff, n));
 }
