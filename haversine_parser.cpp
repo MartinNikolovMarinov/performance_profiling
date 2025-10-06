@@ -1,3 +1,4 @@
+#include "core_logger.h"
 #include <core_init.h>
 #include <haversine_distance.h>
 
@@ -5,7 +6,7 @@ struct Pair {
     f64 x0, y0, x1, y1;
 
     void __debugTraceLog() {
-        if (core::getLogLevel() <= core::LogLevel::L_TRACE) {
+        if (core::loggerGetLevel() <= core::LogLevel::L_TRACE) {
             core::logDirectStd("Pair: {");
             core::logDirectStd("x0="); logDirectStdF64(x0);
             core::logDirectStd(", y0="); logDirectStdF64(y0);
@@ -267,7 +268,7 @@ i32 main(i32 argc, const char** argv) {
         core::convArrList(answers, std::move(answersBin));
 
         // Log Trace the answers:
-        if (core::getLogLevel() <= core::LogLevel::L_TRACE) {
+        if (core::loggerGetLevel() <= core::LogLevel::L_TRACE) {
             for (addr_size i = 0; i < answers.len(); i++) {
                 core::logDirectStd("Answer: ");
                 logDirectStdF64(answers[i]);

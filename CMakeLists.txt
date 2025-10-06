@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.5)
 project(STL_VIEWER VERSION 0.1.0 LANGUAGES CXX)
 
 set(haversine_generator_target haversine_generator)

@@ -1,3 +1,4 @@
+#include "core_logger.h"
 #include <core_init.h>
 
 void assertHandler(const char* failedExpr, const char* file, i32 line, const char* funcName, const char* errMsg) {
@@ -38,7 +39,7 @@ void assertHandler(const char* failedExpr, const char* file, i32 line, const cha
 
 void coreInit() {
     core::LoggerCreateInfo loggerInfo = core::LoggerCreateInfo::createDefault();
-    core::setLogLevel(core::LogLevel::L_INFO);
+    core::loggerSetLevel(core::LogLevel::L_INFO);
     core::initProgramCtx(assertHandler, &loggerInfo);
 }
 

@@ -1,3 +1,4 @@
+#include "core_logger.h"
 #include <core_init.h>
 #include <haversine_distance.h>
 
@@ -29,14 +30,14 @@ void generateRandomUniformPairs(Pair* pairs, f64* results, addr_size pCount) {
         results[i] = haversineDistance;
         sum += sumCoef * haversineDistance;
 
-        if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+        if (core::loggerGetLevel() <= core::LogLevel::L_DEBUG) {
             core::logDirectStd("Calculated Haversine Distance = ");
             logDirectStdF64(haversineDistance);
             core::logDirectStd("\n");
         }
     }
 
-    if (core::getLogLevel() <= core::LogLevel::L_INFO) {
+    if (core::loggerGetLevel() <= core::LogLevel::L_INFO) {
         core::logDirectStd("Expected sum: ");
         logDirectStdF64(sum);
         core::logDirectStd("\n");
@@ -84,14 +85,14 @@ void generateRandomClusteredPairs(Pair* pairs, f64* results, addr_size pCount) {
         results[i] = haversineDistance;
         sum += sumCoef * haversineDistance;
 
-        if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+        if (core::loggerGetLevel() <= core::LogLevel::L_DEBUG) {
             core::logDirectStd("Calculated Haversine Distance = ");
             logDirectStdF64(haversineDistance);
             core::logDirectStd("\n");
         }
     }
 
-    if (core::getLogLevel() <= core::LogLevel::L_INFO) {
+    if (core::loggerGetLevel() <= core::LogLevel::L_INFO) {
         core::logDirectStd("Expected sum: ");
         logDirectStdF64(sum);
         core::logDirectStd("\n");
@@ -278,7 +279,7 @@ i32 main(i32 argc, const char** argv) {
     }
 
     // Read Distances Back To Verify
-    if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+    if (core::loggerGetLevel() <= core::LogLevel::L_DEBUG) {
         core::ArrList<u8> readbackResults;
         core::Expect(
             core::fileReadEntire(outReferenceResultFileSb.view().data(), readbackResults),
@@ -287,7 +288,7 @@ i32 main(i32 argc, const char** argv) {
 
         for (addr_size i = 0; i < readbackResults.len(); i+=sizeof(f64)) {
             f64* v = reinterpret_cast<f64*>(readbackResults.data() + i); // Do not use [i] ! it's obvious why..
-            if (core::getLogLevel() <= core::LogLevel::L_DEBUG) {
+            if (core::loggerGetLevel() <= core::LogLevel::L_DEBUG) {
                 logDirectStdF64(*v);
                 core::logDirectStd("\n");
             }
