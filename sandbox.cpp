@@ -1,5 +1,3 @@
-#include "core_alloc.h"
-#include "core_exec_ctx.h"
 #include <core_init.h>
 #include <os_metrics.h>
 
