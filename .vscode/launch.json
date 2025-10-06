@@ -5,43 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Test with GCC",
-            "type": "cppdbg",
+            "name": "LLDB: Start Debugging",
+            "type": "lldb",
             "request": "launch",
-
-            // "program": "${workspaceFolder}/build/haversine_generator",
-            // "args": ["cluster", "12351234", "3000"],
-
-            // "program": "${workspaceFolder}/build/haversine_parser",
-            // "args": ["${workspaceFolder}/build/pairs.json", "${workspaceFolder}/build/pairs.json.res"],
-
-            "program": "${workspaceFolder}/build/repetition_testing",
-            "args": ["${workspaceFolder}/build/pairs.json"],
-
-            // "program": "${workspaceFolder}/build/page_fault_probing",
-            // "args": ["5"],
-
-            // "program": "${workspaceFolder}/build/sandbox",
-            // "args": ["${workspaceFolder}/build/pairs.json"],
-
-            "stopAtEntry": false,
+            "program": "${workspaceFolder}/build/sandbox",
+            "args": [],
+            "env": {},
             "cwd": "${workspaceFolder}/build",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Skip std",
-                    "text": "-interpreter-exec console \"skip -rfu ^std::\"" // Skip everything in std
-                }
-            ],
-            "preLaunchTask": "Build with Makefile",
-            "miDebuggerPath": "/usr/bin/gdb"
+            "stopOnEntry": false,
+            "preLaunchTask": "Build with Makefile"
         },
     ]
 }
