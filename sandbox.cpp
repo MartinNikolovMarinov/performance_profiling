@@ -1,3 +1,6 @@
+#include "core_logger.h"
+#include "core_profiler.h"
+#include "core_types.h"
 #include <core_init.h>
 #include <os_metrics.h>
 
@@ -18,9 +21,22 @@ i32 main() {
     coreInit();
 
     Buffer buff;
-    buff.count = 100000;
-    buff.data = reinterpret_cast<u8*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).alloc(buff.count, 1));
-    writeToAllBytes(buff);
+    buff.count = core::CORE_GIGABYTE;
+    buff.data = reinterpret_cast<u8*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).zeroAlloc(buff.count, 1));
+
+    core::beginProfile();
+
+    {
+        TIME_BLOCK("writeToAllBytes");
+        writeToAllBytes(buff);
+    }
+
+    for (u64 i = 0; i < buff.count; i++) {
+        AssertFmt(buff.data[i] == u8(i), "{} != {}", buff.data[i], u8(i));
+    }
+
+    auto profiler = core::endProfile();
+    core::logProfileResult(profiler, core::LogLevel::L_INFO);
 
     return 0;
 }

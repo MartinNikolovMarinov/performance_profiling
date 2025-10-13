@@ -151,7 +151,7 @@ private:
 
     constexpr bool skipToNextElement() {
         pos = core::cstrSkipSpace(pos);
-        if (*pos == ',') {
+        if (pos && *pos == ',') {
             pos++;
             pos = core::cstrSkipSpace(pos);
             return true;
@@ -161,7 +161,7 @@ private:
 
     constexpr bool skipPastSeparator(char sep) {
         pos = core::cstrSkipSpace(pos);
-        if (*pos == sep) {
+        if (pos && *pos == sep) {
             pos++;
             pos = core::cstrSkipSpace(pos);
             return true;
