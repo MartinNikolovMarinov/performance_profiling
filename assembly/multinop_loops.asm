@@ -11,47 +11,51 @@
 ;  ========================================================================
 
 ;  ========================================================================
-;  LISTING 132
+;  LISTING 135
 ;  ========================================================================
 
 ;  ============================================================
 ;  Linux x86-64 System V ABI versions
 ;  ============================================================
 
-global MOVAllBytesASM
-global NOPAllBytesASM
-global CMPAllBytesASM
-global DECAllBytesASM
+global NOP3x1AllBytes
+global NOP1x3AllBytes
+global NOP1x9AllBytes
 
 section .text
 
-MOVAllBytesASM:
-    xor     rax, rax                ; i = 0
-.loop:
-    mov     byte [rdi + rax], al    ; Data[i] = (u8)i
-    inc     rax
-    cmp     rdi, rax                ; i >= Count?
-    jne      .loop
-    ret
-
-NOPAllBytesASM:
-    mov     rcx, rdi              ; loop counter = Count
+NOP3x1AllBytes:
+    xor     rax, rax              ; i = 0
 .loop:
     db      0x0F, 0x1F, 0x00      ; 3-byte NOP
-    dec     rcx                   ; i--
-    jnz     .loop
+    inc     rax
+    cmp     rax, rdi              ; i < Count
+    jb      .loop
     ret
 
-CMPAllBytesASM:
-    mov     rcx, rdi              ; loop counter = Count
+NOP1x3AllBytes:
+    xor     rax, rax              ; i = 0
 .loop:
-    cmp     rcx, rcx              ; dummy compare (no memory access)
-    dec     rcx
-    jnz     .loop
+    nop
+    nop
+    nop
+    inc     rax                   ; i++
+    cmp     rax, rdi              ; i < Count?
+    jb      .loop
     ret
 
-DECAllBytesASM:
+NOP1x9AllBytes:
+    xor     rax, rax              ; i = 0
 .loop:
-    dec     rdi                   ; Count--
-    jnz     .loop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    inc     rax                   ; i++
+    cmp     rax, rdi              ; i < Count?
+    jb .loop
     ret

@@ -58,10 +58,11 @@ log_info("---------------------------------------------")
 
 # ---------------------------------------- Begin Declare Source Files --------------------------------------------------
 
-set(common_src src/core_init.cpp)
+set(common_src src/core_init.cpp src/repetition_tester.cpp)
 
 set(asm_src
-    assembly/nop_loop.asm
+    assembly/nop_loops.asm
+    assembly/multinop_loops.asm
 )
 
 set(haversine_generator_src haversine_generator.cpp src/haversine_distance.cpp ${common_src})

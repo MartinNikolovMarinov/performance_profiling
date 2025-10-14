@@ -1,10 +1,19 @@
 #include <core_init.h>
 #include <os_metrics.h>
+#include <repetition_tester.h>
 
 PRAGMA_WARNING_SUPPRESS_ALL
 
-// FIXME: Next thing to write - the repetition tester to be able to analyze assembly functions easier with just adding
-// them to a table.
+// ############################################### FUNCTIONS TO PROFILE ################################################
+
+extern "C" void MOVAllBytesASM(u64 count, u8 *data);
+extern "C" void NOPAllBytesASM(u64 count);
+extern "C" void CMPAllBytesASM(u64 count);
+extern "C" void DECAllBytesASM(u64 count);
+
+extern "C" void NOP3x1AllBytes(u64 count);
+extern "C" void NOP1x3AllBytes(u64 count);
+extern "C" void NOP1x9AllBytes(u64 count);
 
 struct Buffer {
     addr_size count;
@@ -17,12 +26,17 @@ void WriteToAllBytes(Buffer dest) {
     }
 }
 
-extern "C" void MOVAllBytesASM(u64 Count, u8 *Data);
-extern "C" void NOPAllBytesASM(u64 Count);
-extern "C" void CMPAllBytesASM(u64 Count);
-extern "C" void DECAllBytesASM(u64 Count);
+// ##################################################### HELPERS #######################################################
 
-core::Profiler profiler;
+constexpr addr_size N_COUNT = 100000000;
+static u8 g_data[N_COUNT] = {};
+
+void verifyAndClearData(u8* arr, addr_size len) {
+    for (u64 i = 0; i < len; i++) {
+        Assert(arr[i] == u8(i));
+    }
+    core::memset(arr, u8(0), len);
+};
 
 enum ProfilePoints {
     PP_RESERVED,
@@ -34,51 +48,75 @@ enum ProfilePoints {
     PP_DECAllBytesASM,
 };
 
+void WriteToAllBytes_TestFn(u64& processedBytes) {
+    WriteToAllBytes({ N_COUNT, g_data });
+    // verifyAndClearData(g_data, N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void MOVAllBytesASM_TestFn(u64& processedBytes) {
+    MOVAllBytesASM(N_COUNT, g_data);
+    // verifyAndClearData(g_data, N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void NOPAllBytesASM_TestFn(u64& processedBytes) {
+    NOPAllBytesASM(N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void CMPAllBytesASM_TestFn(u64& processedBytes) {
+    CMPAllBytesASM(N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void DECAllBytesASM_TestFn(u64& processedBytes) {
+    DECAllBytesASM(N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void NOP3x1AllBytes_TestFn(u64& processedBytes) {
+    NOP3x1AllBytes(N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void NOP1x3AllBytes_TestFn(u64& processedBytes) {
+    NOP1x3AllBytes(N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+void NOP1x9AllBytes_TestFn(u64& processedBytes) {
+    NOP1x9AllBytes(N_COUNT);
+    processedBytes = N_COUNT;
+}
+
+
+// ###################################################### MAIN #########################################################
+
 i32 main() {
     coreInit();
 
-    auto verify = [](u8* arr, addr_size len) {
-        for (u64 i = 0; i < len; i++) {
-            Assert(arr[i] == u8(i));
-        }
-        core::memset(arr, u8(0), len);
-    };
+    RepetitionTester tester;
 
-    constexpr addr_size N_COUNT = 1000000000;
-    static u8 data[N_COUNT] = {};
-
-    profiler.beginProfile();
-
-    {
-        THROUGHPUT_BLOCK(profiler, PP_WriteToAllBytes, "Write To All Bytes", N_COUNT);
-        WriteToAllBytes({ N_COUNT, data });
+    // These exampes compare the simplest implementation of write to all bytes in C++ code and in ASM. After that it
+    // tests what happens to the performance after some of the instructions are removed or replaced with noop.
+    if (0) {
+        tester.registerFn(WriteToAllBytes_TestFn, "WriteToAllBytes");
+        tester.registerFn(MOVAllBytesASM_TestFn, "MOVAllBytesASM");
+        tester.registerFn(NOPAllBytesASM_TestFn, "NOPAllBytesASM");
+        tester.registerFn(CMPAllBytesASM_TestFn, "CMPAllBytesASM");
+        tester.registerFn(DECAllBytesASM_TestFn, "DECAllBytesASM");
     }
 
-    verify(data, N_COUNT);
+    // These Testes demonstrate what happens when the CPU front-end architecture becomes the bottleneck. They
+    // demonstrate how the CPU frontend (fetch/decode/dispatch) and backend (execution units, retirement) interact when
+    // executing instructions that do no real work.
+    tester.registerFn(NOP3x1AllBytes_TestFn, "NOP3x1AllBytes");
+    tester.registerFn(NOP1x3AllBytes_TestFn, "NOP1x3AllBytes");
+    tester.registerFn(NOP1x9AllBytes_TestFn, "NOP1x9AllBytes");
 
-    {
-        THROUGHPUT_BLOCK(profiler, PP_MoveAllBytesASM, "Move All Bytes ASM", N_COUNT);
-        WriteToAllBytes({ N_COUNT, data });
-    }
-
-    verify(data, N_COUNT);
-
-    {
-        THROUGHPUT_BLOCK(profiler, PP_NOPAllBytesASM, "NOP All Bytes ASM", N_COUNT);
-        NOPAllBytesASM(N_COUNT);
-    }
-    {
-        THROUGHPUT_BLOCK(profiler, PP_CMPAllBytesASM, "CMP all bytes ASM", N_COUNT);
-        CMPAllBytesASM(N_COUNT);
-    }
-    {
-        THROUGHPUT_BLOCK(profiler, PP_DECAllBytesASM, "DEC All Bytes ASM", N_COUNT);
-        DECAllBytesASM(N_COUNT);
-    }
-
-    auto profileRes = profiler.endProfile();
-    logInfo("Profile 1");
-    profileRes.logResult(core::LogLevel::L_INFO);
+    logInfo("Repetition Testing:\n");
+    tester.run(10);
 
     return 0;
 }
