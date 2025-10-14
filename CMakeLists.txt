@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(STL_VIEWER VERSION 0.1.0 LANGUAGES CXX)
+project(STL_VIEWER VERSION 0.1.0 LANGUAGES C CXX ASM_NASM)
 
 set(haversine_generator_target haversine_generator)
 set(haversine_parser_target haversine_parser)
@@ -60,6 +60,10 @@ log_info("---------------------------------------------")
 
 set(common_src src/core_init.cpp)
 
+set(asm_src
+    assembly/nop_loop.asm
+)
+
 set(haversine_generator_src haversine_generator.cpp src/haversine_distance.cpp ${common_src})
 
 set(haversine_parser_src haversine_parser.cpp src/haversine_distance.cpp ${common_src})
@@ -107,9 +111,20 @@ function(create_exe target_name src_files)
     perf_app_target_set_default_flags(${target_name} ${PERF_APP_DEBUG} false)
 endfunction()
 
+function(append_asm_libs_to_target target_name asm_src_files)
+    # TO make NASM errors verbose during compilation: `cmake --build . -- VERBOSE=1`
+    add_library(asm_lib STATIC ${asm_src_files})
+    # set_source_files_properties(assembly/add.asm PROPERTIES COMPILE_FLAGS "-g") # for custom NASM flags
+    set_target_properties(asm_lib PROPERTIES LINKER_LANGUAGE C)
+    target_link_libraries(${target_name} PRIVATE asm_lib)
+endfunction()
+
+
 create_exe("${haversine_generator_target}" "${haversine_generator_src}")
 create_exe("${haversine_parser_target}" "${haversine_parser_src}")
 create_exe("${sandbox_target}" "${sandbox_src}")
 create_exe("${estimate_cpu_freq_target}" "${estimate_cpu_freq_target_src}")
+
+append_asm_libs_to_target("${sandbox_target}" "${asm_src}")
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------

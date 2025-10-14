@@ -1,44 +1,46 @@
-#include "core_logger.h"
-#include "core_profiler.h"
-#include "core_types.h"
 #include <core_init.h>
 #include <os_metrics.h>
 
 PRAGMA_WARNING_SUPPRESS_ALL
 
-struct Buffer {
-    addr_size count;
-    u8* data;
-};
+extern "C" void MOVAllBytesASM(u64 Count, u8 *Data);
+extern "C" void NOPAllBytesASM(u64 Count);
+extern "C" void CMPAllBytesASM(u64 Count);
+extern "C" void DECAllBytesASM(u64 Count);
 
-void writeToAllBytes(Buffer dest) {
-    for (u64 i = 0; i < dest.count; i++) {
-        dest.data[i] = u8(i);
-    }
-}
+core::Profiler profiler;
+
+enum ProfilePoints {
+    PP_RESERVED,
+
+    PP_NOPAllBytesASM,
+    PP_CMPAllBytesASM,
+    PP_DECAllBytesASM,
+};
 
 i32 main() {
     coreInit();
 
-    Buffer buff;
-    buff.count = core::CORE_GIGABYTE;
-    buff.data = reinterpret_cast<u8*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).zeroAlloc(buff.count, 1));
+    constexpr u64 N_COUNT = 1000000;
 
-
-    core::Profiler profiler;
     profiler.beginProfile();
 
     {
-        TIME_BLOCK(profiler, 1, "writeToAllBytes");
-        writeToAllBytes(buff);
+        THROUGHPUT_BLOCK(profiler, PP_NOPAllBytesASM, "NOP all bytes ASM", N_COUNT);
+        NOPAllBytesASM(N_COUNT);
+    }
+    {
+        THROUGHPUT_BLOCK(profiler, PP_CMPAllBytesASM, "CMP all bytes ASM", N_COUNT);
+        CMPAllBytesASM(N_COUNT);
+    }
+    {
+        THROUGHPUT_BLOCK(profiler, PP_DECAllBytesASM, "DEC all bytes ASM", N_COUNT);
+        DECAllBytesASM(N_COUNT);
     }
 
-    for (u64 i = 0; i < buff.count; i++) {
-        AssertFmt(buff.data[i] == u8(i), "{} != {}", buff.data[i], u8(i));
-    }
-
-    auto result = profiler.endProfile();
-    result.logResult(core::LogLevel::L_INFO);
+    auto profileRes = profiler.endProfile();
+    logInfo("Profile 1");
+    profileRes.logResult(core::LogLevel::L_INFO);
 
     return 0;
 }
