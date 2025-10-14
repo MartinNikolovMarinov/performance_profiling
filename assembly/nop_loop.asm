@@ -14,6 +14,10 @@
 ;  LISTING 132
 ;  ========================================================================
 
+;  ============================================================
+;  Linux x86-64 System V ABI versions
+;  ============================================================
+
 global MOVAllBytesASM
 global NOPAllBytesASM
 global CMPAllBytesASM
@@ -21,43 +25,33 @@ global DECAllBytesASM
 
 section .text
 
-;
-; NOTE(casey): These ASM routines are written for the Windows
-; 64-bit ABI. They expect RCX to be the first parameter (the count),
-; and in the case of MOVAllBytesASM, RDX to be the second
-; parameter (the data pointer). To use these on a platform
-; with a different ABI, you would have to change those registers
-; to match the ABI.
-;
-
 MOVAllBytesASM:
-    xor rax, rax
+    xor     rax, rax                ; i = 0
 .loop:
-    mov [rdx + rax], al
-    inc rax
-    cmp rax, rcx
-    jb .loop
+    mov     byte [rdi + rax], al    ; Data[i] = (u8)i
+    inc     rax
+    cmp     rdi, rax                ; i >= Count?
+    jne      .loop
     ret
 
 NOPAllBytesASM:
-    xor rax, rax
+    mov     rcx, rdi              ; loop counter = Count
 .loop:
-    db 0x0f, 0x1f, 0x00 ; NOTE(casey): This is the byte sequence for a 3-byte NOP
-    inc rax
-    cmp rax, rcx
-    jb .loop
+    db      0x0F, 0x1F, 0x00      ; 3-byte NOP
+    dec     rcx                   ; i--
+    jnz     .loop
     ret
 
 CMPAllBytesASM:
-    xor rax, rax
+    mov     rcx, rdi              ; loop counter = Count
 .loop:
-    inc rax
-    cmp rax, rcx
-    jb .loop
+    cmp     rcx, rcx              ; dummy compare (no memory access)
+    dec     rcx
+    jnz     .loop
     ret
 
 DECAllBytesASM:
 .loop:
-    dec rcx
-    jnz .loop
+    dec     rdi                   ; Count--
+    jnz     .loop
     ret

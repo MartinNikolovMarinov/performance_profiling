@@ -18,7 +18,8 @@
         "numeric": "cpp",
         "typeinfo": "cpp",
         "sstream": "cpp",
-        "cstdio": "cpp"
+        "cstdio": "cpp",
+        "ranges": "cpp"
     },
     "lldb.displayFormat": "auto",
     "lldb.dereferencePointers": true,
