@@ -42,6 +42,10 @@ struct JSONDecoder {
 
     constexpr JSONDecoder(char* data, addr_size dataLen) : start(data), pos(data), len(dataLen) {}
 
+    constexpr addr_off offset() {
+        return static_cast<addr_off>(pos - start);
+    }
+
     constexpr void reset() { pos = start; }
 
     template <core::AllocatorId TAllocId = core::DEFAULT_ALLOCATOR_ID>
@@ -234,8 +238,19 @@ void parserCmdArguments(i32 argc, const char** argv, CommandLineArguments& cmdAr
     Panic(argsOk, "Invalid input arguments!");
 }
 
+core::Profiler profiler;
+
+enum ProfilerPoints {
+    PP_RESERVED,
+
+    PP_READING_THE_JSON_INPUT,
+    PP_READING_THE_REFERENCE_ANSWER_FILE,
+    PP_PARSING_JSON,
+    PP_HAVERSINE_CALCULATION,
+};
+
 i32 main(i32 argc, const char** argv) {
-    core::beginProfile();
+    profiler.beginProfile();
 
     coreInit();
 
@@ -249,7 +264,7 @@ i32 main(i32 argc, const char** argv) {
         core::FileStat s;
         core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), s));
 
-        THROUGHPUT_BLOCK("Reading the JSON input", s.size);
+        THROUGHPUT_BLOCK(profiler, PP_READING_THE_JSON_INPUT, "Reading the JSON input", s.size);
 
         core::ArrList<u8> inputJSONBytes;
         core::Expect(core::fileReadEntire(cmdArgs.inFileSb.view().data(), inputJSONBytes));
@@ -259,9 +274,9 @@ i32 main(i32 argc, const char** argv) {
     core::ArrList<f64> answers;
     {
         core::FileStat s;
-        core::Expect(core::fileStat(cmdArgs.inFileSb.view().data(), s));
+        core::Expect(core::fileStat(cmdArgs.answersFileSb.view().data(), s));
 
-        THROUGHPUT_BLOCK("Reading the reference answer file", s.size);
+        THROUGHPUT_BLOCK(profiler, PP_READING_THE_REFERENCE_ANSWER_FILE, "Reading the reference answer file", s.size);
 
         core::ArrList<u8> answersBin;
         core::Expect(core::fileReadEntire(cmdArgs.answersFileSb.view().data(), answersBin));
@@ -282,10 +297,10 @@ i32 main(i32 argc, const char** argv) {
     core::StrBuilder<> keysb; // TODO: Make this a stack/slab allocator?
     addr_size i = 0;
     {
-        THROUGHPUT_BLOCK("Parsing JSON", inputJSON.len());
+        THROUGHPUT_BLOCK(profiler, PP_PARSING_JSON, "Parsing JSON", inputJSON.len());
         Panic(decoder.pushArr() == JSONDecoderState::HAS_MORE);
-        while (true) {
 
+        while (true) {
             Pair p = {};
             f64 number = 0;
 
@@ -324,8 +339,7 @@ i32 main(i32 argc, const char** argv) {
             p.__debugTraceLog();
 
             {
-                THROUGHPUT_BLOCK("Haversine Calculation", inputJSON.len());
-
+                THROUGHPUT_BLOCK(profiler, PP_HAVERSINE_CALCULATION, "Haversine Calculation", sizeof(p));
                 f64 hd = referenceHaversine(p.x0, p.y0, p.x1, p.y1);
                 Panic(hd == answers[i], "Did not match expected answer.");
             }
@@ -342,8 +356,8 @@ i32 main(i32 argc, const char** argv) {
     Panic(i == answers.len(), "Did not calculate the full range of values.");
     logInfo("Successfully parsered and verified {} values", i);
 
-    auto result = core::endProfile();
-    core::logProfileResult(result, core::LogLevel::L_INFO);
+    auto result = profiler.endProfile();
+    result.logResult(core::LogLevel::L_INFO);
 
     return 0;
 }

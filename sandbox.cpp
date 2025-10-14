@@ -24,10 +24,12 @@ i32 main() {
     buff.count = core::CORE_GIGABYTE;
     buff.data = reinterpret_cast<u8*>(core::getAllocator(core::DEFAULT_ALLOCATOR_ID).zeroAlloc(buff.count, 1));
 
-    core::beginProfile();
+
+    core::Profiler profiler;
+    profiler.beginProfile();
 
     {
-        TIME_BLOCK("writeToAllBytes");
+        TIME_BLOCK(profiler, 1, "writeToAllBytes");
         writeToAllBytes(buff);
     }
 
@@ -35,8 +37,8 @@ i32 main() {
         AssertFmt(buff.data[i] == u8(i), "{} != {}", buff.data[i], u8(i));
     }
 
-    auto profiler = core::endProfile();
-    core::logProfileResult(profiler, core::LogLevel::L_INFO);
+    auto result = profiler.endProfile();
+    result.logResult(core::LogLevel::L_INFO);
 
     return 0;
 }
