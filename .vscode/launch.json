@@ -8,7 +8,7 @@
             "name": "LLDB: Start Debugging",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/microbench_alignment",
+            "program": "${workspaceFolder}/build/rat_emulator",
             "args": [],
             "env": {},
             "cwd": "${workspaceFolder}/build",

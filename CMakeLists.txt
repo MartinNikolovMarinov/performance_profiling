@@ -8,6 +8,7 @@ set(microbench_basic_target microbench_basic)
 set(microbench_branches_target microbench_branches)
 set(microbench_alignment_target microbench_alignment)
 set(microbench_rat_target microbench_rat)
+set(rat_emulator_target rat_emulator)
 set(sandbox_target sandbox)
 
 # Standard Requirements:
@@ -83,19 +84,13 @@ else()
 endif()
 
 set(haversine_generator_src haversine_generator.cpp src/haversine_distance.cpp ${common_src})
-
 set(haversine_parser_src haversine_parser.cpp src/haversine_distance.cpp ${common_src})
-
 set(estimate_cpu_freq_target_src estimate_cpu_freq.cpp ${common_src})
-
 set(microbench_basic_src microbench_basic.cpp ${common_src})
-
 set(microbench_branches_src microbench_branches.cpp ${common_src})
-
 set(microbench_alignment_src microbench_alignment.cpp ${common_src})
-
 set(microbench_rat_src microbench_rat.cpp ${common_src})
-
+set(rat_emulator_src rat_emulator.cpp ${common_src})
 set(sandbox_src sandbox.cpp ${common_src})
 
 # ---------------------------------------- End Declare Source Files ----------------------------------------------------
@@ -144,6 +139,7 @@ create_exe("${microbench_basic_target}" "${microbench_basic_src}")
 create_exe("${microbench_branches_target}" "${microbench_branches_src}")
 create_exe("${microbench_alignment_target}" "${microbench_alignment_src}")
 create_exe("${microbench_rat_target}" "${microbench_rat_src}")
+create_exe("${rat_emulator_target}" "${rat_emulator_src}")
 
 append_asm_libs_to_target("${microbench_basic_target}" "${asm_src}")
 append_asm_libs_to_target("${microbench_branches_target}" "${asm_src}")
