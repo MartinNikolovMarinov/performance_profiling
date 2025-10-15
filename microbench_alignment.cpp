@@ -12,17 +12,6 @@ extern "C" void NOPAligned15(u64 count);
 extern "C" void NOPAligned31(u64 count);
 extern "C" void NOPAligned63(u64 count);
 
-struct Buffer {
-    addr_size count;
-    u8* data;
-};
-
-void WriteToAllBytes(Buffer dest) {
-    for (u64 i = 0; i < dest.count; i++) {
-        dest.data[i] = u8(i);
-    }
-}
-
 // ##################################################### HELPERS #######################################################
 
 constexpr addr_size N_COUNT = 1000000000;
