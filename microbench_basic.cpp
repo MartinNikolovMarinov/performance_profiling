@@ -15,8 +15,6 @@ extern "C" void NOP3x1AllBytes(u64 count);
 extern "C" void NOP1x3AllBytes(u64 count);
 extern "C" void NOP1x9AllBytes(u64 count);
 
-extern "C" void ConditionalNOP(u64 count, u64 value);
-
 struct Buffer {
     addr_size count;
     u8* data;

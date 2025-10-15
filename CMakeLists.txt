@@ -6,6 +6,7 @@ set(haversine_parser_target haversine_parser)
 set(estimate_cpu_freq_target estimate_cpu_freq)
 set(microbench_basic_target microbench_basic)
 set(microbench_branches_target microbench_branches)
+set(microbench_alignment_target microbench_alignment)
 set(sandbox_target sandbox)
 
 # Standard Requirements:
@@ -66,6 +67,7 @@ set(asm_src
     assembly/nop_loops.asm
     assembly/multinop_loops.asm
     assembly/conditional_nop_loops.asm
+    assembly/jump_allignment.asm
 )
 
 if(OS STREQUAL "windows")
@@ -87,6 +89,8 @@ set(estimate_cpu_freq_target_src estimate_cpu_freq.cpp ${common_src})
 set(microbench_basic_src microbench_basic.cpp ${common_src})
 
 set(microbench_branches_src microbench_branches.cpp ${common_src})
+
+set(microbench_alignment_src microbench_alignment.cpp ${common_src})
 
 set(sandbox_src sandbox.cpp ${common_src})
 
@@ -128,15 +132,16 @@ function(append_asm_libs_to_target target_name asm_src_files)
     target_link_libraries(${target_name} PRIVATE ${asm_lib_name})
 endfunction()
 
-
 create_exe("${haversine_generator_target}" "${haversine_generator_src}")
 create_exe("${haversine_parser_target}" "${haversine_parser_src}")
 create_exe("${sandbox_target}" "${sandbox_src}")
 create_exe("${estimate_cpu_freq_target}" "${estimate_cpu_freq_target_src}")
 create_exe("${microbench_basic_target}" "${microbench_basic_src}")
 create_exe("${microbench_branches_target}" "${microbench_branches_src}")
+create_exe("${microbench_alignment_target}" "${microbench_alignment_src}")
 
 append_asm_libs_to_target("${microbench_basic_target}" "${asm_src}")
 append_asm_libs_to_target("${microbench_branches_target}" "${asm_src}")
+append_asm_libs_to_target("${microbench_alignment_target}" "${asm_src}")
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------
