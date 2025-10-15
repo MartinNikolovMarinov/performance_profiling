@@ -1,4 +1,4 @@
-#include <os_metrics.h>
+#include <platform.h>
 
 #include <windows.h>
 #include <psapi.h>
@@ -29,4 +29,8 @@ u64 readOSPageFaultCount() {
 
     u64 result = memoryCounters.pageFaultCount;
     return result;
+}
+
+bool readOSRandomBytes(u64 count, void* dest) {
+    Panic(false, "Not implemented yet");
 }

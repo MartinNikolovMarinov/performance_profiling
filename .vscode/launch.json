@@ -8,7 +8,7 @@
             "name": "LLDB: Start Debugging",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/sandbox",
+            "program": "${workspaceFolder}/build/microbench_asm",
             "args": [],
             "env": {},
             "cwd": "${workspaceFolder}/build",
