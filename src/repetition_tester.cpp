@@ -1,7 +1,12 @@
 #include <repetition_tester.h>
+#include <platform.h>
 
-void RepetitionTester::registerFn(TestFn&& fn, const char* label) {
-    entries.push({std::move(fn), label, 0});
+void RepetitionTester::setBeforeEach(BeforeFn fn) {
+    beforeEach = fn;
+}
+
+void RepetitionTester::registerFn(TestFn fn, const char* label, BeforeFn beforeFn) {
+    entries.push({fn, beforeFn, label, 0});
 }
 
 void RepetitionTester::run(u32 repetitionMaxUnchanged) {
@@ -10,33 +15,45 @@ void RepetitionTester::run(u32 repetitionMaxUnchanged) {
     for (addr_size i = 0; i < entries.len(); i++) {
         u32 runs = 0;
         u32 unchanged = 0;
+
+        u64 totalTsc = 0;
         u64 min = core::limitMax<u64>();
         u64 max = core::limitMin<u64>();
-        u64 totalTsc = 0;
         u64 avg = 0;
 
-        // Run the test functions for some fixed iteration count and find the fastest execution time.
+        u64 pfTotal = 0;
+        u64 pfMin = core::limitMax<u64>();
+        u64 pfMax = core::limitMin<u64>();
+        u64 pfAvg = 0;
+
         while (unchanged < repetitionMaxUnchanged) {
+            if (beforeEach) beforeEach();
+            if (entries[i].beforeFn) entries[i].beforeFn();
+
+            u64 pfBefore = readOSPageFaultCount();
             u64 startTsc = core::getPerfCounter();
             entries[i].fn(entries[i].processedBytes);
             u64 elapsedTsc = core::getPerfCounter() - startTsc;
-            totalTsc += elapsedTsc;
+            u64 pfDiff = readOSPageFaultCount() - pfBefore;
 
             if (elapsedTsc < min) {
                 min = elapsedTsc;
-                unchanged = 0; // reset only when a new min is found.
-            }
-            else if (elapsedTsc > max) {
+                pfMin = pfDiff;
+                unchanged = 0;
+            } else if (elapsedTsc > max) {
                 max = elapsedTsc;
-            }
-            else {
+                pfMax = pfDiff;
+            } else {
                 unchanged++;
             }
 
+            totalTsc += elapsedTsc;
+            pfTotal += pfDiff;
             runs++;
         }
 
         avg = totalTsc / runs;
+        pfAvg = pfTotal / runs;
 
         auto processedBytes = entries[i].processedBytes;
         char elapsedBuf[core::testing::ELAPSED_TIME_TO_STR_BUFFER_SIZE];
@@ -46,16 +63,26 @@ void RepetitionTester::run(u32 repetitionMaxUnchanged) {
         core::logDirectStd("--- {} ---\n", entries[i].label);
         {
             core::testing::elapsedTimeToStr(elapsedBuf, min);
-            core::logDirectStd("  Min: {} ({}) {}/s\n", elapsedBuf, min, processedBytesBuf);
+            if (pfMin > 0)
+                core::logDirectStd("  Min: {} ({}) {}/s | PF: {}\n", elapsedBuf, min, processedBytesBuf, pfMin);
+            else
+                core::logDirectStd("  Min: {} ({}) {}/s\n", elapsedBuf, min, processedBytesBuf);
         }
         {
             core::testing::elapsedTimeToStr(elapsedBuf, max);
-            core::logDirectStd("  Max: {} ({}) {}/s\n", elapsedBuf, max, processedBytesBuf);
+            if (pfMax > 0)
+                core::logDirectStd("  Max: {} ({}) {}/s | PF: {}\n", elapsedBuf, max, processedBytesBuf, pfMax);
+            else
+                core::logDirectStd("  Max: {} ({}) {}/s\n", elapsedBuf, max, processedBytesBuf);
         }
         {
             core::testing::elapsedTimeToStr(elapsedBuf, avg);
-            core::logDirectStd("  Avg: {} ({}) {}/s\n", elapsedBuf, avg, processedBytesBuf);
+            if (pfAvg > 0)
+                core::logDirectStd("  Avg: {} ({}) {}/s | PF: {}\n", elapsedBuf, avg, processedBytesBuf, pfAvg);
+            else
+                core::logDirectStd("  Avg: {} ({}) {}/s\n", elapsedBuf, avg, processedBytesBuf);
         }
         core::logDirectStd("\n");
     }
 }
+
