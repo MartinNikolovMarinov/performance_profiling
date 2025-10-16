@@ -25,6 +25,7 @@ global Read_32x2
 
 section .text
 
+; reads 2 × 4-byte values → 8 bytes total per iteration
 Read_4x2:
     xor rax, rax
     align 64
@@ -36,6 +37,7 @@ Read_4x2:
     jb .loop
     ret
 
+; reads 2 × 8-byte values → 16 bytes total per iteration
 Read_8x2:
     xor rax, rax
     align 64
@@ -47,6 +49,7 @@ Read_8x2:
     jb .loop
     ret
 
+; 128 reads 2 × 16-byte vectors → 32 bytes total per iteration
 Read_16x2:
     xor rax, rax
     align 64
@@ -58,6 +61,7 @@ Read_16x2:
     jb .loop
     ret
 
+; reads 2 × 32-byte vectors → 64 bytes total per iteration
 Read_32x2:
     xor rax, rax
     align 64

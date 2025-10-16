@@ -23,7 +23,12 @@ global Read_x2
 global Read_x3
 global Read_x4
 global Read_1x2
-global Read_8x2
+
+global Write_x1
+global Write_x2
+global Write_x3
+global Write_x4
+global Write_1x2
 
 section .text
 
@@ -70,6 +75,58 @@ Read_1x2:
 .loop:
     mov al, [rsi]
     mov al, [rsi]
+    sub rdi, 2
+    jnle .loop
+    ret
+
+Write_x1:
+    mov rax, 0xFFFFFFFFFFFFFFFF
+    align 64
+.loop:
+    mov [rsi], rax
+    sub rdi, 1
+    jnle .loop
+    ret
+
+Write_x2:
+    mov rax, 0xFFFFFFFFFFFFFFFF
+    align 64
+.loop:
+    mov [rsi], rax
+    mov [rsi], rax
+    sub rdi, 2
+    jnle .loop
+    ret
+
+Write_x3:
+    mov rax, 0xFFFFFFFFFFFFFFFF
+    align 64
+.loop:
+    mov [rsi], rax
+    mov [rsi], rax
+    mov [rsi], rax
+    sub rdi, 3
+    jnle .loop
+    ret
+
+Write_x4:
+    mov rax, 0xFFFFFFFFFFFFFFFF
+    align 64
+.loop:
+    mov [rsi], rax
+    mov [rsi], rax
+    mov [rsi], rax
+    mov [rsi], rax
+    sub rdi, 4
+    jnle .loop
+    ret
+
+Write_1x2:
+    mov rax, 0xFFFFFFFFFFFFFFFF
+    align 64
+.loop:
+    mov [rsi], al
+    mov [rsi], al
     sub rdi, 2
     jnle .loop
     ret
