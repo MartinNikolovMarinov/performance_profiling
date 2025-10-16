@@ -8,6 +8,8 @@ set(microbench_basic_target microbench_basic)
 set(microbench_branches_target microbench_branches)
 set(microbench_alignment_target microbench_alignment)
 set(microbench_rat_target microbench_rat)
+set(execution_ports_target microbench_execution_ports)
+set(simd_target microbench_simd)
 set(rat_emulator_target rat_emulator)
 set(sandbox_target sandbox)
 
@@ -71,6 +73,8 @@ set(asm_src
     assembly/conditional_nop_loops.asm
     assembly/jump_allignment.asm
     assembly/rat.asm
+    assembly/execution_ports.asm
+    assembly/simd.asm
 )
 
 if(OS STREQUAL "windows")
@@ -90,6 +94,8 @@ set(microbench_basic_src microbench_basic.cpp ${common_src})
 set(microbench_branches_src microbench_branches.cpp ${common_src})
 set(microbench_alignment_src microbench_alignment.cpp ${common_src})
 set(microbench_rat_src microbench_rat.cpp ${common_src})
+set(execution_ports_src microbench_execution_ports.cpp ${common_src})
+set(simd_target_src microbench_simd.cpp ${common_src})
 set(rat_emulator_src rat_emulator.cpp ${common_src})
 set(sandbox_src sandbox.cpp ${common_src})
 
@@ -140,10 +146,14 @@ create_exe("${microbench_branches_target}" "${microbench_branches_src}")
 create_exe("${microbench_alignment_target}" "${microbench_alignment_src}")
 create_exe("${microbench_rat_target}" "${microbench_rat_src}")
 create_exe("${rat_emulator_target}" "${rat_emulator_src}")
+create_exe("${execution_ports_target}" "${execution_ports_src}")
+create_exe("${simd_target}" "${simd_target_src}")
 
 append_asm_libs_to_target("${microbench_basic_target}" "${asm_src}")
 append_asm_libs_to_target("${microbench_branches_target}" "${asm_src}")
 append_asm_libs_to_target("${microbench_alignment_target}" "${asm_src}")
 append_asm_libs_to_target("${microbench_rat_target}" "${asm_src}")
+append_asm_libs_to_target("${execution_ports_target}" "${asm_src}")
+append_asm_libs_to_target("${simd_target}" "${asm_src}")
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------
