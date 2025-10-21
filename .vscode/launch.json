@@ -8,7 +8,7 @@
             "name": "LLDB: Start Debugging",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/microbench_execution_ports",
+            "program": "${workspaceFolder}/build/estimate_cache_size_and_bandwidth",
             "args": [],
             "env": {},
             "cwd": "${workspaceFolder}/build",

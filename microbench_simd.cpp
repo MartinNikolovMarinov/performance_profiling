@@ -17,7 +17,7 @@ constexpr addr_size N_COUNT = 1000000000;
 u8 g_data[64] = {};
 
 void cleanBuffer() {
-    core::memset(g_data, u8(0), N_COUNT);
+    core::memset(g_data, u8(0), 64);
 }
 
 // ###################################################### TEST FUNCTIONS ###############################################
