@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(STL_VIEWER VERSION 0.1.0 LANGUAGES C CXX ASM_NASM)
+project(performance-profiling VERSION 0.1.0 LANGUAGES C CXX ASM_NASM)
 
 set(haversine_generator_target haversine_generator)
 set(haversine_parser_target haversine_parser)
