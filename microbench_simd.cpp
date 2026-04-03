@@ -22,21 +22,25 @@ void cleanBuffer() {
 
 // ###################################################### TEST FUNCTIONS ###############################################
 
-void Read_4x2_TestFn(u64& processedBytes) {
+bool Read_4x2_TestFn(u64& processedBytes) {
     Read_4x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_8x2_TestFn(u64& processedBytes) {
+bool Read_8x2_TestFn(u64& processedBytes) {
     Read_8x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_16x2_TestFn(u64& processedBytes) {
+bool Read_16x2_TestFn(u64& processedBytes) {
     Read_16x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_32x2_TestFn(u64& processedBytes) {
+bool Read_32x2_TestFn(u64& processedBytes) {
     Read_32x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
 
 // ###################################################### MAIN #########################################################

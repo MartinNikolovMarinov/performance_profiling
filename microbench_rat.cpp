@@ -22,13 +22,15 @@ void WriteToAllBytes(Buffer dest) {
 
 // ##################################################### HELPERS #######################################################
 
-void RATAdd_TestFn(u64& processedBytes) {
+bool RATAdd_TestFn(u64& processedBytes) {
     RATAdd();
     processedBytes = 1000000000;
+    return false;
 }
-void RATMovAdd_TestFn(u64& processedBytes) {
+bool RATMovAdd_TestFn(u64& processedBytes) {
     RATMovAdd();
     processedBytes = 1000000000;
+    return false;
 }
 
 // ###################################################### MAIN #########################################################

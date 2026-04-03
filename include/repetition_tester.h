@@ -3,7 +3,7 @@
 #include <core_init.h>
 
 struct RepetitionTester {
-    using TestFn = void (*)(u64& processedBytes);
+    using TestFn = bool (*)(u64& processedBytes);
     using BeforeFn = void (*)();
 
     struct TestFnEntry {

@@ -22,7 +22,7 @@ void RepetitionTester::run(u32 repetitionMaxUnchanged) {
 
             bool shouldStop = false;
             auto t = startSingleTest(wave, shouldStop);
-            wave.fn(wave.processedBytes); // The only part of the code that is beeing measured.
+            shouldStop |= wave.fn(wave.processedBytes); // The only part of the code that is beeing measured.
             endSingleTest(wave, t);
             if (shouldStop) break;
         }

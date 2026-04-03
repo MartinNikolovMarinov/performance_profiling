@@ -35,51 +35,61 @@ void verifyWrite() {
 
 // ###################################################### TEST FUNCTIONS ###############################################
 
-void Read_x1_TestFn(u64& processedBytes) {
+bool Read_x1_TestFn(u64& processedBytes) {
     Read_x1(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_x2_TestFn(u64& processedBytes) {
+bool Read_x2_TestFn(u64& processedBytes) {
     Read_x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_x3_TestFn(u64& processedBytes) {
+bool Read_x3_TestFn(u64& processedBytes) {
     Read_x3(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_x4_TestFn(u64& processedBytes) {
+bool Read_x4_TestFn(u64& processedBytes) {
     Read_x4(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
-void Read_1x2_TestFn(u64& processedBytes) {
+bool Read_1x2_TestFn(u64& processedBytes) {
     Read_1x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void Write_x1_TestFn(u64& processedBytes) {
+bool Write_x1_TestFn(u64& processedBytes) {
     Write_x1(N_COUNT, g_data);
     processedBytes = N_COUNT;
     verifyWrite();
+    return false;
 }
-void Write_x2_TestFn(u64& processedBytes) {
+bool Write_x2_TestFn(u64& processedBytes) {
     Write_x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
     verifyWrite();
+    return false;
 }
-void Write_x3_TestFn(u64& processedBytes) {
+bool Write_x3_TestFn(u64& processedBytes) {
     Write_x3(N_COUNT, g_data);
     processedBytes = N_COUNT;
     verifyWrite();
+    return false;
 }
-void Write_x4_TestFn(u64& processedBytes) {
+bool Write_x4_TestFn(u64& processedBytes) {
     Write_x4(N_COUNT, g_data);
     processedBytes = N_COUNT;
     verifyWrite();
+    return false;
 }
-void Write_1x2_TestFn(u64& processedBytes) {
+bool Write_1x2_TestFn(u64& processedBytes) {
     Write_1x2(N_COUNT, g_data);
     processedBytes = N_COUNT;
     Assert(g_data[0] == 0xFF);
+    return false;
 }
 
 // ###################################################### MAIN #########################################################

@@ -16,25 +16,30 @@ extern "C" void NOPAligned63(u64 count);
 
 constexpr addr_size N_COUNT = 1000000000;
 
-void NOPAligned64_TestFn(u64& processedBytes) {
+bool NOPAligned64_TestFn(u64& processedBytes) {
     NOPAligned64(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
-void NOPAligned1_TestFn(u64& processedBytes) {
+bool NOPAligned1_TestFn(u64& processedBytes) {
     NOPAligned1(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
-void NOPAligned15_TestFn(u64& processedBytes) {
+bool NOPAligned15_TestFn(u64& processedBytes) {
     NOPAligned15(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
-void NOPAligned31_TestFn(u64& processedBytes) {
+bool NOPAligned31_TestFn(u64& processedBytes) {
     NOPAligned31(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
-void NOPAligned63_TestFn(u64& processedBytes) {
+bool NOPAligned63_TestFn(u64& processedBytes) {
     NOPAligned63(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
 // ###################################################### MAIN #########################################################

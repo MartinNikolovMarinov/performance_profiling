@@ -38,46 +38,54 @@ void verifyAndClearData(u8* arr, addr_size len) {
     core::memset(arr, u8(0), len);
 };
 
-void WriteToAllBytes_TestFn(u64& processedBytes) {
+bool WriteToAllBytes_TestFn(u64& processedBytes) {
     WriteToAllBytes({ N_COUNT, g_data });
     // verifyAndClearData(g_data, N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void MOVAllBytesASM_TestFn(u64& processedBytes) {
+bool MOVAllBytesASM_TestFn(u64& processedBytes) {
     MOVAllBytesASM(N_COUNT, g_data);
     // verifyAndClearData(g_data, N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void NOPAllBytesASM_TestFn(u64& processedBytes) {
+bool NOPAllBytesASM_TestFn(u64& processedBytes) {
     NOPAllBytesASM(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void CMPAllBytesASM_TestFn(u64& processedBytes) {
+bool CMPAllBytesASM_TestFn(u64& processedBytes) {
     CMPAllBytesASM(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void DECAllBytesASM_TestFn(u64& processedBytes) {
+bool DECAllBytesASM_TestFn(u64& processedBytes) {
     DECAllBytesASM(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void NOP3x1AllBytes_TestFn(u64& processedBytes) {
+bool NOP3x1AllBytes_TestFn(u64& processedBytes) {
     NOP3x1AllBytes(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void NOP1x3AllBytes_TestFn(u64& processedBytes) {
+bool NOP1x3AllBytes_TestFn(u64& processedBytes) {
     NOP1x3AllBytes(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
-void NOP1x9AllBytes_TestFn(u64& processedBytes) {
+bool NOP1x9AllBytes_TestFn(u64& processedBytes) {
     NOP1x9AllBytes(N_COUNT);
     processedBytes = N_COUNT;
+    return false;
 }
 
 // ###################################################### MAIN #########################################################
